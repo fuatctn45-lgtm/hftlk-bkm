@@ -13,6 +13,9 @@ import {
   X,
   Camera,
   RotateCcw,
+  Check,
+  Clock,
+  ArrowRight,
 } from 'lucide-react';
 
 interface RedListViewProps {
@@ -79,55 +82,75 @@ export const RedListView: React.FC<RedListViewProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3.5 sm:space-y-5">
-      {/* Header */}
-      <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4">
+      {/* Header (Sarı-Siyah) */}
+      <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-xl bg-yellow-400 text-black flex items-center justify-center shrink-0 shadow-md shadow-yellow-500/20">
+              <AlertTriangle className="w-4 h-4 text-black" />
             </div>
-            <h2 className="text-lg sm:text-2xl font-black text-[#0f2d4d]">
-              RED Verilen Bakımlar
+            <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+              RED Arıza Takibi
             </h2>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Operatörlerin uygun bulmadığı kritik arıza kayıtları ve saha kanıtları.
+          <p className="text-xs sm:text-sm text-slate-400 font-medium">
+            Operatörlerin uygun bulmadığı kritik arıza kayıtları, fotoğraflı kanıtlar ve aksiyon yönetimi.
           </p>
         </div>
 
-        {/* Global TTS Summary for Red list */}
         {redRecords.length > 0 && (
           <AudioPlayerButton
             text={`Açık arıza listesi: Şu anda seçili dönemde toplam ${redRecords.length} adet RED arıza kaydı bulunmaktadır. Etkilenen makine sayısı ${affectedMachines}.`}
             label="Seslendir"
             size="sm"
+            className="bg-[#0b0f17] text-yellow-400 border-yellow-500/30"
           />
         )}
       </div>
 
       {/* Filters Card */}
-      <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-xs space-y-2.5 sm:space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="bg-[#121824] p-4 rounded-2xl border border-slate-800 shadow-md space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
           <div>
-            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Dönem</label>
-            <select
-              value={periodFilter}
-              onChange={(e) => setPeriodFilter(e.target.value as any)}
-              className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
-            >
-              <option value="bu">Bu Hafta ({thisWeek})</option>
-              <option value="gecen">Geçen Hafta ({lastWeek})</option>
-              <option value="tum">Tüm Dönemler</option>
-            </select>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">Dönem</label>
+            <div className="flex items-center bg-[#0b0f17] p-1 rounded-xl text-xs font-bold border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPeriodFilter('bu')}
+                className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  periodFilter === 'bu' ? 'bg-yellow-400 text-black shadow-xs font-black' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Bu Hafta
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodFilter('gecen')}
+                className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  periodFilter === 'gecen' ? 'bg-yellow-400 text-black shadow-xs font-black' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Geçen Hafta
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodFilter('tum')}
+                className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  periodFilter === 'tum' ? 'bg-yellow-400 text-black shadow-xs font-black' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Tümü
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Makine</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">Makine</label>
             <select
               value={selectedMachine}
               onChange={(e) => setSelectedMachine(e.target.value)}
-              className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+              className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               <option value="">Tüm Makineler</option>
               {machines.map((m) => (
@@ -139,14 +162,14 @@ export const RedListView: React.FC<RedListViewProps> = ({
           </div>
 
           <div className="sm:col-span-2 md:col-span-1">
-            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Metin Arama</label>
+            <label className="block text-[11px] font-bold text-slate-400 mb-1">Metin Arama</label>
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Açıklama veya parça ara..."
-                className="w-full pl-8 pr-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+                className="w-full pl-8 pr-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             </div>
@@ -154,14 +177,14 @@ export const RedListView: React.FC<RedListViewProps> = ({
         </div>
 
         {/* Counter KPI chips */}
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 text-[11px] sm:text-xs font-bold">
-          <span className="px-2.5 py-1 rounded-lg bg-red-100 text-red-900 border border-red-200">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800 text-xs font-bold">
+          <span className="px-2.5 py-1 rounded-xl bg-rose-950/60 text-rose-300 border border-rose-800/60">
             Açık RED: <b>{redRecords.length}</b>
           </span>
-          <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="px-2.5 py-1 rounded-xl bg-[#18202e] text-yellow-400 border border-yellow-400/30">
             Etkilenen: <b>{affectedMachines} Makine</b>
           </span>
-          <span className="px-2.5 py-1 rounded-lg bg-sky-100 text-sky-900 border border-sky-200">
+          <span className="px-2.5 py-1 rounded-xl bg-[#18202e] text-slate-300 border border-slate-700">
             Fotoğraflı: <b>{photoCount}</b>
           </span>
         </div>
@@ -169,17 +192,17 @@ export const RedListView: React.FC<RedListViewProps> = ({
 
       {/* List of Red Records */}
       {redRecords.length === 0 ? (
-        <div className="bg-white p-8 sm:p-12 rounded-xl sm:rounded-2xl border border-slate-200 text-center shadow-xs">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-2.5">
-            <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
+        <div className="bg-[#121824] p-8 sm:p-12 rounded-2xl border border-slate-800 text-center shadow-md space-y-2">
+          <div className="w-12 h-12 bg-emerald-950/60 text-emerald-400 border border-emerald-800/50 rounded-2xl flex items-center justify-center mx-auto mb-2">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
-          <h3 className="text-base sm:text-lg font-black text-slate-800 mb-1">Açık Arıza Kaydı Yok</h3>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Seçilen dönem ve filtre kriterlerine uygun RED verilen bakım bulunamadı. 👍
+          <h3 className="text-base sm:text-lg font-black text-white">Açık Arıza Kaydı Yok</h3>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto">
+            Seçilen dönem ve filtre kriterlerine uygun RED verilen bakım kaydı bulunamadı.
           </p>
         </div>
       ) : (
-        <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-3">
           {redRecords.map((r) => {
             const dateStr = new Date(r.createdAt).toLocaleString('tr-TR', {
               day: '2-digit',
@@ -192,95 +215,112 @@ export const RedListView: React.FC<RedListViewProps> = ({
             return (
               <article
                 key={r.recordId}
-                className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 border-l-4 sm:border-l-6 border-l-red-500 p-3.5 sm:p-5 shadow-xs hover:shadow-md transition-all space-y-2.5 sm:space-y-3 overflow-hidden"
+                className="bg-[#121824] rounded-2xl border border-slate-800 shadow-md hover:border-slate-700 transition-all p-4 sm:p-5 space-y-3 overflow-hidden relative"
               >
+                <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-rose-600" />
+                
                 {/* Header row */}
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="bg-[#FF9999] text-[#7a1414] font-black text-[11px] sm:text-xs px-2 py-0.5 rounded shrink-0">
+                <div className="flex flex-wrap items-start justify-between gap-2 pl-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="bg-rose-600 text-white font-black text-xs px-2.5 py-1 rounded-lg shrink-0 shadow-2xs">
                       RED
                     </span>
                     <div className="min-w-0">
-                      <h3 className="text-sm sm:text-base font-black text-[#0f2d4d] break-words">
+                      <h3 className="text-sm sm:text-base font-black text-white break-words">
                         {r.machineName}
                       </h3>
-                      <div className="text-[10px] sm:text-xs text-slate-400 font-semibold">{r.recordId}</div>
+                      <div className="text-[11px] font-mono text-slate-400 font-semibold">{r.recordId}</div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 font-bold">
-                    <span className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
-                      <User className="w-3 h-3 text-slate-600" />
-                      <span>{r.operator}</span>
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 font-semibold">
+                    <span className="flex items-center gap-1 bg-[#18202e] px-2 py-0.5 rounded-md border border-slate-700">
+                      <User className="w-3.5 h-3.5 text-yellow-400" />
+                      <span className="text-slate-200">{r.operator}</span>
                     </span>
-                    <span className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
-                      <Calendar className="w-3 h-3 text-slate-600" />
+                    <span className="flex items-center gap-1 bg-[#18202e] px-2 py-0.5 rounded-md border border-slate-700">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
                       <span>{dateStr}</span>
                     </span>
-                    <span className="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">
+                    <span className="bg-yellow-400/10 text-yellow-400 font-mono px-2 py-0.5 rounded-md font-bold border border-yellow-400/30">
                       {r.weekKey}
                     </span>
                   </div>
                 </div>
 
-                {/* Task & Target info if available */}
+                {/* Task & Target info */}
                 {(r.task || r.measuredValue) && (
-                  <div className="text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-700 flex flex-wrap gap-x-4 gap-y-1">
+                  <div className="text-xs bg-[#0b0f17] p-3 rounded-xl border border-slate-800 text-slate-300 flex flex-wrap gap-x-4 gap-y-1.5 ml-2">
                     {r.task && (
                       <div>
-                        <b>Bakım:</b> {r.task}
+                        <span className="text-slate-400">Bakım:</span> <b className="text-white">{r.task}</b>
                       </div>
                     )}
                     {r.measuredValue && (
                       <div>
-                        <b>Ölçülen Değer:</b> <span className="text-red-700 font-bold">{r.measuredValue}</span>
+                        <span className="text-slate-400">Ölçülen Değer:</span>{' '}
+                        <b className="text-rose-400">{r.measuredValue}</b>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Operator Description in yellow callout box */}
-                <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs sm:text-sm text-amber-950 space-y-1">
-                  <div className="flex items-center justify-between text-[11px] font-black uppercase text-amber-800">
-                    <span>Operatör Açıklaması:</span>
+                {/* Operator Description in alert box */}
+                <div className="p-3.5 bg-rose-950/30 border border-rose-600/40 rounded-xl text-xs sm:text-sm text-white space-y-1.5 ml-2">
+                  <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-rose-400">
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Operatör Arıza Açıklaması:</span>
+                    </span>
                     <AudioPlayerButton
                       text={`Makine: ${r.machineName}. Arıza açıklaması: ${r.description}`}
                       label="Dinle"
                       size="sm"
-                      className="bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300"
+                      className="bg-rose-950 text-rose-300 border-rose-700"
                     />
                   </div>
-                  <div className="font-semibold leading-relaxed whitespace-pre-wrap">
+                  <div className="font-semibold leading-relaxed whitespace-pre-wrap text-slate-200">
                     {r.description || 'Açıklama girilmemiş.'}
                   </div>
                 </div>
 
-                {/* Proof Image if attached */}
+                {/* Proof Photo Thumbnail */}
                 {r.proofImageUrl && (
-                  <div className="pt-1">
-                    <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>Kanıt Fotoğrafı:</span>
+                  <div className="ml-2 pt-1 flex items-center gap-3">
+                    <div
+                      onClick={() => setLightboxImage(r.proofImageUrl || null)}
+                      className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-yellow-400/50 cursor-zoom-in group shadow-xs shrink-0 bg-black"
+                    >
+                      <img
+                        src={r.proofImageUrl}
+                        alt="Arıza Kanıtı"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-yellow-400 text-xs">
+                        <Maximize2 className="w-4 h-4" />
+                      </div>
                     </div>
-                    <img
-                      src={r.proofImageUrl}
-                      alt="Kanıt Fotoğrafı"
-                      onClick={() => setLightboxImage(r.proofImageUrl!)}
-                      className="w-40 h-28 object-cover rounded-xl border border-slate-300 shadow-xs cursor-zoom-in hover:brightness-95 transition-all"
-                    />
+                    <div className="text-xs text-slate-400">
+                      <span className="font-bold text-white block">Saha Kanıt Fotoğrafı</span>
+                      <span>Büyütmek için görselin üzerine dokunun.</span>
+                    </div>
                   </div>
                 )}
 
-                {/* Action button: Giderildi */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                {/* Action button: Mark Resolved */}
+                <div className="ml-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Müdahale yapıldıktan sonra kaydı kapatın
+                  </span>
+
                   <button
                     type="button"
                     onClick={() => handleMarkResolved(r)}
                     disabled={actionLoading === r.recordId}
-                    className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-sm shadow-xs transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="px-3.5 py-2 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs shadow-md shadow-yellow-500/20 transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{actionLoading === r.recordId ? 'Kaydediliyor...' : '✔ Giderildi (UYGUN Yap)'}</span>
+                    <Check className="w-3.5 h-3.5 text-black" />
+                    <span>Arıza Giderildi Olarak İşaretle</span>
                   </button>
                 </div>
               </article>
@@ -289,25 +329,43 @@ export const RedListView: React.FC<RedListViewProps> = ({
         </div>
       )}
 
+      {/* Lightbox Modal */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-xs"
+        >
+          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => setLightboxImage(null)}
+              className="absolute -top-10 right-0 text-yellow-400 hover:text-white p-1"
+            >
+              <X className="w-7 h-7" />
+            </button>
+            <img
+              src={lightboxImage}
+              alt="Büyütülmüş Görsel"
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl bg-black border border-yellow-500/40 shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
+
       {/* In-App Resolve Confirmation Modal */}
       {pendingResolveRecord && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl space-y-4 animate-in zoom-in-95">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-[#121824] rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-yellow-500/40 space-y-4 animate-in zoom-in-95">
+            <div className="w-12 h-12 bg-yellow-400 text-black rounded-full flex items-center justify-center mx-auto shadow-md shadow-yellow-500/20">
+              <Check className="w-6 h-6 text-black" />
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-1">
+              <h3 className="text-base font-black text-white mb-1">
                 Arıza Giderildi mi?
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed font-semibold">
-                <b>{pendingResolveRecord.machineName}</b>
-                <br />
-                <span className="text-slate-400 font-mono text-[11px]">{pendingResolveRecord.recordId}</span>
-              </p>
-              <p className="text-xs text-slate-500 mt-2">
-                Bu arıza kaydı Google E-Tablo üzerinde <b>UYGUN</b> olarak güncellenecektir.
+              <p className="text-xs text-slate-400 leading-relaxed">
+                <b className="text-yellow-400">{pendingResolveRecord.machineName}</b> için oluşturulan bu arıza kaydı çözüldü olarak güncellenecek ve durum <b>UYGUN</b> yapılacaktır.
               </p>
             </div>
 
@@ -315,41 +373,19 @@ export const RedListView: React.FC<RedListViewProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmResolve}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-sm shadow-md transition-colors"
+                className="flex-1 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-sm shadow-md transition-colors cursor-pointer"
               >
                 Evet, Giderildi
               </button>
+
               <button
                 type="button"
                 onClick={() => setPendingResolveRecord(null)}
-                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-sm transition-colors cursor-pointer"
               >
                 Vazgeç
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lightbox Modal */}
-      {lightboxImage && (
-        <div
-          onClick={() => setLightboxImage(null)}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs"
-        >
-          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
-            <button
-              type="button"
-              onClick={() => setLightboxImage(null)}
-              className="absolute -top-10 right-0 text-white hover:text-slate-300 p-1"
-            >
-              <X className="w-7 h-7" />
-            </button>
-            <img
-              src={lightboxImage}
-              alt="Büyük Fotoğraf"
-              className="max-w-full max-h-[82vh] object-contain rounded-xl bg-slate-900 shadow-2xl"
-            />
           </div>
         </div>
       )}

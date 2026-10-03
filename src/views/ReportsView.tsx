@@ -271,13 +271,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3.5 sm:space-y-5 print:p-0 print:space-y-4">
-      {/* Top Action Bar */}
-      <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
+      {/* Top Action Bar (Sarı-Siyah) */}
+      <div className="bg-[#121824] p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-800 shadow-md flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
-          <h2 className="text-lg sm:text-2xl font-black text-[#0f2d4d]">
+          <h2 className="text-lg sm:text-2xl font-black text-white">
             Bakım Raporları & Analitik
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+          <p className="text-xs sm:text-sm text-slate-400 font-medium">
             Makinelerin haftalık tamamlanma oranları, arızalar ve resmi bakım formu.
           </p>
         </div>
@@ -287,23 +287,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             text={reportSpokenSummary}
             label="Seslendir"
             size="sm"
+            className="bg-[#0b0f17] text-yellow-400 border-yellow-500/30"
           />
 
           <button
             type="button"
             onClick={handleExportCsv}
-            className="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+            className="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-[#0b0f17] hover:bg-yellow-400 hover:text-black text-yellow-400 border border-yellow-500/30 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-700" />
+            <Download className="w-3.5 h-3.5" />
             <span>Excel</span>
           </button>
 
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+            className="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-[#0b0f17] hover:bg-yellow-400 hover:text-black text-yellow-400 border border-yellow-500/30 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5 text-sky-700" />
+            <Printer className="w-3.5 h-3.5" />
             <span>Yazdır</span>
           </button>
 
@@ -313,23 +314,23 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               setMailModalOpen(true);
               setMailResult(null);
             }}
-            className="w-full sm:w-auto px-3.5 py-1.5 sm:py-2 bg-[#b11f2e] hover:bg-[#8f1824] text-white rounded-xl font-extrabold text-xs sm:text-sm transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+            className="w-full sm:w-auto px-3.5 py-1.5 sm:py-2 bg-yellow-400 hover:bg-yellow-300 text-black rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 shadow-md shadow-yellow-500/20 cursor-pointer"
           >
-            <Mail className="w-3.5 h-3.5" />
+            <Mail className="w-3.5 h-3.5 text-black" />
             <span>PDF Mail Gönder</span>
           </button>
         </div>
       </div>
 
       {/* Filter Controls Card */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3 print:hidden">
+      <div className="bg-[#121824] p-5 rounded-2xl border border-slate-800 shadow-md space-y-3 print:hidden">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Dönem</label>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Dönem</label>
             <select
               value={periodType}
               onChange={(e) => setPeriodType(e.target.value as any)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+              className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-lg text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               <option value="bu">Bu Hafta ({thisWeek})</option>
               <option value="gecen">Geçen Hafta ({lastWeek})</option>
@@ -340,21 +341,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Bakımı Yapan</label>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Bakımı Yapan</label>
             <input
               type="text"
               readOnly
               value={operatorName}
-              className="w-full px-3 py-2 bg-sky-50 border border-sky-200 rounded-lg text-sm font-black text-[#0f2d4d] cursor-default"
+              className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-lg text-sm font-black text-yellow-400 cursor-default"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Makine</label>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Makine</label>
             <select
               value={selectedMachine}
               onChange={(e) => setSelectedMachine(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+              className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-lg text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               <option value="">Tüm Bakımlı Makineler ({machinesWithMaintenance.length})</option>
               {machinesWithMaintenance.map((m) => (
@@ -366,11 +367,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Birim</label>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Birim</label>
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+              className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-lg text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               <option value="">Tüm Birimler</option>
               {DEPARTMENTS.map((d) => (
@@ -385,21 +386,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         {periodType === 'ozel' && (
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Başlangıç Tarihi</label>
+              <label className="block text-xs font-bold text-slate-400 mb-1">Başlangıç Tarihi</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold"
+                className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-lg text-sm font-semibold text-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Bitiş Tarihi</label>
+              <label className="block text-xs font-bold text-slate-400 mb-1">Bitiş Tarihi</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold"
+                className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-lg text-sm font-semibold text-white"
               />
             </div>
           </div>
@@ -407,70 +408,70 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       </div>
 
       {/* Official Form Header (Print friendly) */}
-      <div className="bg-[#0f4c81] text-white p-5 rounded-2xl shadow-sm space-y-2 print:rounded-none">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+      <div className="bg-black text-white p-5 rounded-2xl border border-yellow-500/40 shadow-sm space-y-2 print:bg-white print:text-black print:rounded-none">
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-yellow-400 print:text-black">
           HAFTALIK BAKIM KONTROL FORMU
         </h2>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-sm text-sky-100 font-medium">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-sm text-slate-300 font-medium print:text-black">
           <span>
-            Bakımı Yapan: <b className="text-white">{operatorName}</b>
+            Bakımı Yapan: <b className="text-yellow-400 print:text-black">{operatorName}</b>
           </span>
           <span>
-            Dönem: <b className="text-white">{periodType === 'bu' ? thisWeek : periodType}</b>
+            Dönem: <b className="text-white print:text-black">{periodType === 'bu' ? thisWeek : periodType}</b>
           </span>
           <span>
-            Rapor Tarihi: <b className="text-white">{new Date().toLocaleDateString('tr-TR')}</b>
+            Rapor Tarihi: <b className="text-white print:text-black">{new Date().toLocaleDateString('tr-TR')}</b>
           </span>
         </div>
       </div>
 
       {/* KPI Box Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="text-2xl sm:text-3xl font-black text-[#0f2d4d]">{totalPlanned}</div>
-          <div className="text-xs text-slate-500 font-bold mt-1">Planlanan Bakım</div>
+        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
+          <div className="text-2xl sm:text-3xl font-black text-yellow-400 font-mono">{totalPlanned}</div>
+          <div className="text-xs text-slate-400 font-bold mt-1">Planlanan Bakım</div>
         </div>
 
-        <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 shadow-xs">
-          <div className="text-2xl sm:text-3xl font-black text-emerald-800">{totalCompleted}</div>
-          <div className="text-xs text-emerald-700 font-bold mt-1">Yapılan Kontrol</div>
+        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">{totalCompleted}</div>
+          <div className="text-xs text-emerald-400 font-bold mt-1">Yapılan Kontrol</div>
         </div>
 
-        <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-200 shadow-xs">
-          <div className="text-2xl sm:text-3xl font-black text-amber-700">{pendingCount}</div>
-          <div className="text-xs text-amber-800 font-bold mt-1">Bekleyen</div>
+        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
+          <div className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">{pendingCount}</div>
+          <div className="text-xs text-amber-400 font-bold mt-1">Bekleyen</div>
         </div>
 
-        <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 shadow-xs">
-          <div className="text-2xl sm:text-3xl font-black text-emerald-700">{uygunCount}</div>
-          <div className="text-xs text-emerald-700 font-bold mt-1">UYGUN</div>
+        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">{uygunCount}</div>
+          <div className="text-xs text-emerald-400 font-bold mt-1">UYGUN</div>
         </div>
 
-        <div className="bg-red-50/60 p-4 rounded-xl border border-red-200 shadow-xs">
-          <div className="text-2xl sm:text-3xl font-black text-red-700">{redCount}</div>
-          <div className="text-xs text-red-700 font-bold mt-1">RED (Arıza)</div>
+        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
+          <div className="text-2xl sm:text-3xl font-black text-rose-400 font-mono">{redCount}</div>
+          <div className="text-xs text-rose-400 font-bold mt-1">RED (Arıza)</div>
         </div>
 
-        <div className="bg-sky-50/60 p-4 rounded-xl border border-sky-200 shadow-xs">
-          <div className="text-2xl sm:text-3xl font-black text-[#0f4c81]">%{completionRate}</div>
-          <div className="text-xs text-sky-800 font-bold mt-1">Tamamlanma Oranı</div>
+        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
+          <div className="text-2xl sm:text-3xl font-black text-yellow-400 font-mono">%{completionRate}</div>
+          <div className="text-xs text-yellow-400 font-bold mt-1">Tamamlanma Oranı</div>
         </div>
       </div>
 
       {/* Machine Breakdown Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="font-black text-base text-[#0f2d4d]">
+      <div className="bg-[#121824] rounded-2xl border border-slate-800 shadow-md overflow-hidden">
+        <div className="p-4 bg-[#0e131d] border-b border-slate-800 flex items-center justify-between">
+          <h3 className="font-black text-base text-white">
             Makine Bazında Durum ({machineBreakdown.length} Bakımlı Makine)
           </h3>
-          <span className="text-xs text-slate-500 font-semibold">
-            Yalnızca bakımı tanımlı veya kaydı olan makineler listelenir
+          <span className="text-xs text-yellow-400 font-semibold">
+            Yalnızca bakımı tanımlı olan makineler listelenir
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead className="bg-[#0f4c81] text-white font-bold text-xs uppercase">
+          <table className="w-full text-left text-xs sm:text-sm text-slate-200">
+            <thead className="bg-black text-yellow-400 font-black text-xs uppercase border-b border-yellow-500/40">
               <tr>
                 <th className="py-2.5 px-4">Makine</th>
                 <th className="py-2.5 px-3 text-right">Plan</th>
@@ -480,7 +481,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 <th className="py-2.5 px-4">Tamamlanma Oranı</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-800/80">
               {machineBreakdown.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-400 font-bold">

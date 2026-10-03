@@ -2,17 +2,23 @@
 
 :root {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  letter-spacing: -0.011em;
+  letter-spacing: -0.015em;
+  --header-height: 58px;
+  --color-industrial-yellow: #facc15;
+  --color-industrial-black: #0b0f17;
 }
 
 html, body, #root {
   width: 100%;
   max-width: 100vw;
+  min-height: 100%;
   overflow-x: hidden;
   margin: 0;
   padding: 0;
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
+  background-color: #0b0f17;
+  color: #f8fafc;
 }
 
 *, *::before, *::after {
@@ -43,20 +49,48 @@ code, pre, .font-mono {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* Custom crisp industrial scrollbars */
+/* Industrial tactile active states for touch */
+@media (hover: none) {
+  button:active, a:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Custom crisp industrial yellow/black scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #111622;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #334155;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #eab308;
+}
+
+@keyframes scanSweep {
+  0% { transform: translateY(0); opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { transform: translateY(220px); opacity: 0.8; }
+}
+
+.animate-scan-sweep {
+  animation: scanSweep 2s ease-in-out infinite alternate;
+}
+
+/* Industrial Safety Striping Pattern */
+.bg-safety-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #000000,
+    #000000 12px,
+    #eab308 12px,
+    #eab308 24px
+  );
 }
 
 @media print {
@@ -68,6 +102,6 @@ code, pre, .font-mono {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     background-color: #ffffff !important;
+    color: #000000 !important;
   }
 }
-

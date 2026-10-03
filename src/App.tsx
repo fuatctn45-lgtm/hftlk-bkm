@@ -17,6 +17,7 @@ export default function App() {
     'home' | 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch'
   >('operator');
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [templates, setTemplates] = useState<MaintenanceTemplate[]>([]);
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,14 +36,52 @@ export default function App() {
   const loadData = async (showSyncSpinner: boolean = false) => {
     if (showSyncSpinner) setSyncing(true);
     try {
-      const [m, t, r] = await Promise.all([
+      const [rawMachines, rawTemplates, rawRecords] = await Promise.all([
         cmmsApi.getMachines(),
         cmmsApi.getTemplates(),
         cmmsApi.getRecords(),
       ]);
-      setMachines(m);
-      setTemplates(t);
-      setRecords(r);
+
+      setAllMachines(rawMachines);
+      setTemplates(rawTemplates);
+      setRecords(rawRecords);
+
+      // SADECE BAKIMI OLAN MAKİNELER KALSIN (Kullanıcı Talebi: Görevi olmayan 200+ makineyi temizle)
+      const activeTemplates = rawTemplates.filter((tmpl) => tmpl.active);
+      const machineNamesWithTasks = new Set(
+        activeTemplates.map((tmpl) => (tmpl.machineName || '').trim().toLowerCase()).filter(Boolean)
+      );
+      const machineIdsWithTasks = new Set(
+        activeTemplates.map((tmpl) => (tmpl.machineId || '').trim().toLowerCase()).filter(Boolean)
+      );
+
+      const withTasks = rawMachines.filter((machine) => {
+        const nameMatch = machine.machineName && machineNamesWithTasks.has(machine.machineName.trim().toLowerCase());
+        const idMatch = machine.id && machineIdsWithTasks.has(machine.id.trim().toLowerCase());
+        const codeMatch = (machine.code || machine.machineCode) && (
+          machineIdsWithTasks.has((machine.code || '').trim().toLowerCase()) ||
+          machineIdsWithTasks.has((machine.machineCode || '').trim().toLowerCase())
+        );
+        return nameMatch || idMatch || codeMatch;
+      });
+
+      // Şablonda tanımlı olup makine listesinde adı geçen makineleri de dahil et
+      for (const tmpl of activeTemplates) {
+        if (!tmpl.machineName) continue;
+        const exists = withTasks.some(
+          (m) => m.machineName.trim().toLowerCase() === tmpl.machineName.trim().toLowerCase()
+        );
+        if (!exists) {
+          withTasks.push({
+            id: tmpl.machineId || tmpl.machineName,
+            machineName: tmpl.machineName,
+            machineCode: tmpl.machineId || '',
+            code: tmpl.machineId || '',
+          });
+        }
+      }
+
+      setMachines(withTasks);
       setLastSyncTime(new Date().toLocaleTimeString('tr-TR'));
     } catch (err) {
       console.error('Failed to load Google Sheet data:', err);
@@ -90,13 +129,13 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-        <div className="text-center space-y-3 bg-white p-8 rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full">
-          <Loader2 className="w-10 h-10 animate-spin text-[#0f4c81] mx-auto" />
-          <div className="text-base font-black text-slate-800">
+      <div className="min-h-screen bg-[#0b0f17] flex items-center justify-center p-4">
+        <div className="text-center space-y-3 bg-[#121824] p-8 rounded-3xl shadow-2xl border border-yellow-500/30 max-w-sm w-full">
+          <Loader2 className="w-10 h-10 animate-spin text-yellow-400 mx-auto" />
+          <div className="text-base font-black text-white">
             Google E-Tabloya Bağlanılıyor...
           </div>
-          <div className="text-xs text-slate-500 font-medium">
+          <div className="text-xs text-slate-400 font-medium">
             Makineler, kontrol tanımları ve arıza kayıtları senkronize ediliyor.
           </div>
         </div>
@@ -107,7 +146,7 @@ export default function App() {
   // Not logged in: Show Login Screen
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-100">
+      <div className="min-h-screen bg-[#0b0f17]">
         <LoginView onLoginSuccess={handleLoginSuccess} />
       </div>
     );
@@ -115,7 +154,7 @@ export default function App() {
 
   // Logged in: Render Full Application with Responsive Header
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col font-sans">
       <Header
         currentScreen={currentScreen}
         onNavigate={setCurrentScreen}
@@ -172,7 +211,7 @@ export default function App() {
 
         {currentScreen === 'admin' && (
           <AdminView
-            machines={machines}
+            machines={allMachines.length > 0 ? allMachines : machines}
             templates={templates}
             onTemplatesUpdated={() => loadData(true)}
             onNavigateHome={() => setCurrentScreen('home')}
@@ -188,34 +227,34 @@ export default function App() {
       </main>
 
       {/* Corporate Footer with live E-Tablo status */}
-      <footer className="bg-white border-t border-slate-200 py-2.5 sm:py-3 px-3 sm:px-4 text-center text-[11px] sm:text-xs text-slate-500 font-medium print:hidden">
+      <footer className="bg-[#080b11] border-t border-yellow-500/20 py-2.5 sm:py-3 px-3 sm:px-4 text-center text-[11px] sm:text-xs text-slate-400 font-medium print:hidden">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2">
           <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0" />
-            <span className="font-bold text-slate-700">Google E-Tablo Aktif</span>
+            <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse inline-block shrink-0" />
+            <span className="font-bold text-yellow-400">Google E-Tablo Aktif</span>
             <span>•</span>
-            <span>{machines.length} Makine</span>
+            <span className="text-slate-300">{machines.length} Bakımlı Makine</span>
             <span>•</span>
-            <span>{records.length} Kayıt</span>
+            <span className="text-slate-300">{records.length} Kayıt</span>
             {lastSyncTime && <span className="hidden xs:inline">({lastSyncTime})</span>}
           </div>
-          <span className="text-[10px] sm:text-xs text-slate-400">AKG Soğutma • CMMS V5.5.0</span>
+          <span className="text-[10px] sm:text-xs text-slate-500">AKG CMMS • V5.5.0 Sarı-Siyah</span>
         </div>
       </footer>
 
       {/* IN-APP LOGOUT CONFIRMATION MODAL (Does not depend on window.confirm) */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl space-y-4 animate-in zoom-in-95">
-            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#121824] rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-yellow-500/30 space-y-4 animate-in zoom-in-95">
+            <div className="w-14 h-14 bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 rounded-full flex items-center justify-center mx-auto">
               <LogOut className="w-7 h-7" />
             </div>
 
             <div>
-              <h3 className="text-lg font-black text-slate-900 mb-1">
+              <h3 className="text-lg font-black text-white mb-1">
                 Sistemden Çıkış Yapılsın mı?
               </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-400 leading-relaxed">
                 Aktif oturumunuz sonlandırılacak ve şifre giriş ekranına yönlendirileceksiniz.
               </p>
             </div>
@@ -224,7 +263,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleConfirmLogout}
-                className="flex-1 py-3 bg-[#b11f2e] hover:bg-[#8f1824] text-white font-extrabold rounded-xl text-sm shadow-md transition-colors"
+                className="flex-1 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-sm shadow-md transition-colors cursor-pointer"
               >
                 Çıkış Yap
               </button>
@@ -232,7 +271,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="py-3 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
+                className="py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-sm transition-colors cursor-pointer"
               >
                 Vazgeç
               </button>

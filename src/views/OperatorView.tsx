@@ -24,6 +24,12 @@ import {
   Loader2,
   Check,
   RotateCcw,
+  QrCode,
+  ArrowRight,
+  ChevronRight,
+  Layers,
+  Wrench,
+  CheckCircle,
 } from 'lucide-react';
 
 interface OperatorViewProps {
@@ -34,6 +40,17 @@ interface OperatorViewProps {
   onRecordSaved: () => void;
   onNavigateHome: () => void;
 }
+
+const PRESET_DEFECT_REASONS = [
+  'Yağ / Sıvı Kaçağı',
+  'Aşırı Isınma / Hararet',
+  'Anormal Ses / Titreşim',
+  'Gevşek Cıvata / Bağlantı',
+  'Fiziksel Hasar / Çatlak',
+  'Hava / Basınç Kaçağı',
+  'Aşınmış Kayış / Rulman',
+  'Elektrik Temassızlığı',
+];
 
 export const OperatorView: React.FC<OperatorViewProps> = ({
   user,
@@ -68,7 +85,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const [refImageModalOpen, setRefImageModalOpen] = useState(false);
   const [proofImageModalOpen, setProofImageModalOpen] = useState(false);
 
-  // AI Image Analysis state (FEATURE 3: gemini-3.1-pro-preview)
+  // AI Image Analysis state
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<string | null>(null);
   const [aiAnalysisVerdict, setAiAnalysisVerdict] = useState<'UYGUN' | 'RED' | null>(null);
@@ -92,10 +109,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     return DEPARTMENTS.find((d) => d.deger === cleanSys) || null;
   };
 
-  // State to filter machines: by default true (only machines with defined maintenance tasks)
-  const [onlyWithTasks, setOnlyWithTasks] = useState(true);
-
-  // Helper to get active tasks for any machine (matching either machineId or machineName)
+  // Helper to get active tasks for any machine
   const getMachineTasks = (m: Machine) => {
     return templates
       .filter((t) => (t.machineId === m.id || t.machineName === m.machineName) && t.active)
@@ -108,12 +122,26 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // Tasks for selected machine
   const machineTasks = selectedMachine ? getMachineTasks(selectedMachine) : [];
 
-  // Filtered machines
-  const baseMachines = onlyWithTasks ? machinesWithTasks : machines;
-  const filteredMachines = baseMachines.filter((m) =>
-    m.machineName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (m.costCenter && m.costCenter.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filtered machines by status and search
+  const [machineStatusFilter, setMachineStatusFilter] = useState<'all' | 'pending' | 'completed' | 'hasRed'>('all');
+
+  const filteredMachines = machinesWithTasks.filter((m) => {
+    const codeStr = m.machineCode || m.code || m.costCenter || '';
+    const matchesSearch =
+      m.machineName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      codeStr.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (machineStatusFilter === 'all') return true;
+    const mTasks = getMachineTasks(m);
+    const hasRed = mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
+    if (machineStatusFilter === 'hasRed') return hasRed;
+    const completedCount = mTasks.filter((t) => getTaskStatus(m.id, t.templateId) !== 'bekleyen').length;
+    const isAllDone = mTasks.length > 0 && completedCount >= mTasks.length;
+    if (machineStatusFilter === 'completed') return isAllDone;
+    if (machineStatusFilter === 'pending') return !isAllDone && !hasRed;
+    return true;
+  });
 
   // QR Selection Flow
   const handleSelectMachine = (machine: Machine) => {
@@ -206,6 +234,16 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     }
   };
 
+  // Quick Preset Defect Reason Chip Click
+  const handleAddPresetReason = (reasonText: string) => {
+    setResult('RED');
+    if (!description.trim()) {
+      setDescription(`${reasonText}: Detaylı kontrol yapıldı, giderilmesi gerekiyor.`);
+    } else if (!description.includes(reasonText)) {
+      setDescription(`${description.trim()}, ${reasonText}`);
+    }
+  };
+
   // AI Image Inspection (FEATURE 3: gemini-3.1-pro-preview)
   const handleRunAiInspection = async () => {
     if (!proofImage) return;
@@ -223,7 +261,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         setAiAnalysisResult(res.analysis);
         setAiAnalysisVerdict(res.verdict || null);
 
-        // If Gemini recommends RED and user has empty description, offer recommendation
         if (res.verdict === 'RED' && !description) {
           setDescription('AI Tarafından Tespit Edilen Kusur: Fotoğrafta aşınma ve sızıntı emareleri saptandı.');
           setResult('RED');
@@ -251,26 +288,26 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       return;
     }
 
-    // Check result
+    // Check result chosen
     if (!result) {
       setSaveMessage({ type: 'error', text: 'Lütfen bakım sonucunu (UYGUN veya RED) seçiniz.' });
       return;
     }
 
-    // Check RED description requirement (min 10 chars)
+    // Check mandatory description for RED (min 10 chars)
     if (result === 'RED' && description.trim().length < 10) {
       setSaveMessage({
         type: 'error',
-        text: 'RED verilen bakımlarda arıza açıklaması zorunludur (en az 10 karakter).',
+        text: 'RED arıza durumunda en az 10 karakter açıklama girilmesi zorunludur.',
       });
       return;
     }
 
-    // Check photo requirement
+    // Check mandatory photo
     if (selectedTask.photoRequired && !proofImage) {
       setSaveMessage({
         type: 'error',
-        text: 'Yönetici bu bakım için kanıt fotoğrafını zorunlu tutmuştur. Lütfen fotoğraf ekleyiniz.',
+        text: 'Bu kontrol maddesi için kanıt fotoğrafı yüklenmesi zorunludur.',
       });
       return;
     }
@@ -280,26 +317,38 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
     try {
       const res = await cmmsApi.saveRecord({
-        templateId: selectedTask.templateId,
         machineId: selectedMachine.id,
         machineName: selectedMachine.machineName,
-        operator: user.operator || user.name || 'Operatör',
-        result,
-        measuredValue: measuredValue.trim(),
-        description: description.trim(),
-        proofImageUrl: proofImage || undefined,
-        weekKey: currentWeek,
+        templateId: selectedTask.templateId,
         task: selectedTask.task,
-        system: selectedTask.system,
-        targetValue: selectedTask.targetValue,
+        measuredValue: measuredValue.trim() || undefined,
+        result,
+        description: description.trim() || undefined,
+        operator: user.operator || user.name || user.fullName || 'Operatör',
+        operatorRole: user.role || 'operator',
+        photoDataUrl: proofImage || undefined,
       });
 
       if (res.success) {
-        setSaveMessage({ type: 'success', text: `Kontrol kaydedildi (Kayıt No: ${res.recordId})` });
+        setSaveMessage({
+          type: 'success',
+          text: `Bakım kontrolü başarıyla kaydedildi! (${result})`,
+        });
         onRecordSaved();
+
+        // Find next pending task on this machine
+        const currentIndex = machineTasks.findIndex((t) => t.templateId === selectedTask.templateId);
+        const nextPendingTask = machineTasks.find(
+          (t, idx) => idx > currentIndex && getTaskStatus(selectedMachine.id, t.templateId) === 'bekleyen'
+        );
+
         setTimeout(() => {
-          setSubStep('tasks');
-        }, 1200);
+          if (nextPendingTask) {
+            handleOpenTask(nextPendingTask);
+          } else {
+            setSubStep('tasks');
+          }
+        }, 1000);
       }
     } catch (err: any) {
       setSaveMessage({ type: 'error', text: err.message || 'Kayıt sırasında hata oluştu.' });
@@ -308,166 +357,285 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     }
   };
 
+  // Modern Sarı-Siyah Step Breadcrumbs Navigation Bar
+  const renderBreadcrumbBar = () => {
+    return (
+      <div className="bg-[#121824] rounded-2xl border border-yellow-500/30 p-2.5 sm:p-3 shadow-md flex items-center justify-between gap-2 overflow-x-auto select-none">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-bold text-slate-300 shrink-0">
+          <button
+            type="button"
+            onClick={() => setSubStep('machines')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              subStep === 'machines'
+                ? 'bg-yellow-400 text-black font-black shadow-md shadow-yellow-500/20'
+                : 'hover:bg-slate-800 text-slate-300'
+            }`}
+          >
+            <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">1</span>
+            <span>Makineler</span>
+          </button>
+
+          <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+
+          <button
+            type="button"
+            disabled={!selectedMachine}
+            onClick={() => setSubStep('tasks')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              subStep === 'tasks' || subStep === 'qr'
+                ? 'bg-yellow-400 text-black font-black shadow-md shadow-yellow-500/20'
+                : 'hover:bg-slate-800 text-slate-300'
+            }`}
+          >
+            <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">2</span>
+            <span className="truncate max-w-[90px] sm:max-w-xs">{selectedMachine?.machineName || 'Kontrol'}</span>
+          </button>
+
+          {selectedTask && (
+            <>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-400 text-black font-black shadow-md shadow-yellow-500/20">
+                <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">3</span>
+                <span>Madde #{selectedTask.orderNo || 1}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onNavigateHome}
+          className="text-xs text-yellow-400 hover:text-yellow-300 font-bold px-2 py-1 rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+        >
+          Ana Sayfa
+        </button>
+      </div>
+    );
+  };
+
   // ==========================================
-  // VIEW 1: MACHINE SELECTION
+  // VIEW 1: MACHINE SELECTION (Sarı-Siyah)
   // ==========================================
   if (subStep === 'machines') {
     return (
-      <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <div>
-            <h2 className="text-lg sm:text-2xl font-black text-[#0f2d4d]">
-              Bakımı Yapılacak Makineler
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-              {onlyWithTasks
-                ? `Aktif bakım tanımı olan ${machinesWithTasks.length} makine listeleniyor.`
-                : `Fabrikadaki tüm ${machines.length} makine listeleniyor.`}
-            </p>
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 sm:py-5 space-y-3.5">
+        {renderBreadcrumbBar()}
+
+        {/* Search & Segmented Filter Bar */}
+        <div className="bg-[#121824] p-3.5 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
+                <span>Bakımı Yapılacak Makineler</span>
+                <span className="text-xs font-black text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-md border border-yellow-400/30">
+                  {machinesWithTasks.length}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400 font-medium">
+                Haftalık bakımı tanımlı {machinesWithTasks.length} makine
+              </p>
+            </div>
+
+            {/* Segmented Filter Control */}
+            <div className="flex items-center bg-[#0b0f17] p-1 rounded-xl text-xs font-bold w-full sm:w-auto overflow-x-auto border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setMachineStatusFilter('all')}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  machineStatusFilter === 'all'
+                    ? 'bg-yellow-400 text-black shadow-xs font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Tümü ({machinesWithTasks.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMachineStatusFilter('pending')}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  machineStatusFilter === 'pending'
+                    ? 'bg-yellow-400 text-black shadow-xs font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Bekleyen
+              </button>
+              <button
+                type="button"
+                onClick={() => setMachineStatusFilter('hasRed')}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  machineStatusFilter === 'hasRed'
+                    ? 'bg-rose-600 text-white shadow-xs font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                RED
+              </button>
+              <button
+                type="button"
+                onClick={() => setMachineStatusFilter('completed')}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  machineStatusFilter === 'completed'
+                    ? 'bg-emerald-500 text-black shadow-xs font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Tamamlandı
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-            {/* Filter Toggle: Only with tasks vs All */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold w-full sm:w-auto">
+          {/* Search Input with Clear Button */}
+          <div className="relative w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Makine adı veya masraf merkezi ara..."
+              className="w-full pl-10 pr-9 py-2.5 bg-[#0b0f17] border border-slate-700 rounded-xl text-sm font-semibold text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+            />
+            {searchQuery && (
               <button
                 type="button"
-                onClick={() => setOnlyWithTasks(true)}
-                className={`flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg transition-all text-center ${
-                  onlyWithTasks
-                    ? 'bg-[#0f4c81] text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-3 text-slate-400 hover:text-white p-0.5"
               >
-                Tanımlı ({machinesWithTasks.length})
+                <X className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                onClick={() => setOnlyWithTasks(false)}
-                className={`flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg transition-all text-center ${
-                  !onlyWithTasks
-                    ? 'bg-[#0f4c81] text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Tümü ({machines.length})
-              </button>
-            </div>
-
-            <div className="relative w-full sm:w-64">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Makine ara..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
-              />
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            </div>
+            )}
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-bold">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-400 font-semibold">
+          <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-[#FFB733] border border-black/20" />
+              <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
               <span>Bekleyen</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-[#99FF99] border border-black/20" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
               <span>Tamamlanan</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-[#FF9999] border border-black/20" />
-              <span>RED</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+              <span>RED (Arıza)</span>
             </span>
           </div>
 
-          <span className="text-[11px] text-slate-500 font-medium">
-            <b>{filteredMachines.length}</b> makine
+          <span className="text-slate-400">
+            <b className="text-yellow-400">{filteredMachines.length}</b> makine listeleniyor
           </span>
         </div>
 
-        {/* Machine Cards */}
+        {/* Machine Cards Grid */}
         {filteredMachines.length === 0 ? (
-          <div className="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200 text-center shadow-xs space-y-3">
-            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+          <div className="bg-[#121824] p-10 rounded-2xl border border-slate-800 text-center shadow-md space-y-3">
+            <div className="w-12 h-12 rounded-full bg-slate-800 text-yellow-400 flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-black text-slate-700">Uygun Makine Bulunamadı</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Arama kriterinize veya seçili filtreye uygun makine bulunamadı.
+            <h3 className="text-base font-black text-white">Aramaya Uygun Makine Yok</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Lütfen filtrelerinizi veya arama kelimenizi kontrol edin.
             </p>
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                className="px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl"
               >
-                Aramayı Temizle
+                Aramayı Sıfırla
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
             {filteredMachines.map((m) => {
               const mTasks = getMachineTasks(m);
               const completedCount = mTasks.filter(
                 (t) => getTaskStatus(m.id, t.templateId) !== 'bekleyen'
               ).length;
+              const hasRed = mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
+              const isAllDone = mTasks.length > 0 && completedCount >= mTasks.length;
+              const percent = mTasks.length > 0 ? Math.round((completedCount / mTasks.length) * 100) : 0;
 
               return (
-                <button
+                <div
                   key={m.id}
-                  type="button"
                   onClick={() => handleSelectMachine(m)}
-                  className="group bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 hover:border-[#0f4c81] shadow-xs hover:shadow-md transition-all text-left flex flex-col justify-between cursor-pointer overflow-hidden"
+                  className={`group bg-[#121824] p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-md flex flex-col justify-between active:scale-[0.98] ${
+                    hasRed
+                      ? 'border-rose-500/70 hover:border-rose-400'
+                      : isAllDone
+                      ? 'border-emerald-500/60 hover:border-emerald-400'
+                      : 'border-slate-800 hover:border-yellow-400'
+                  }`}
                 >
-                  <div className="min-w-0 w-full">
+                  <div className="min-w-0 w-full mb-3">
+                    {/* Header: Machine Name & Cost Center Code */}
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-sm sm:text-base font-black text-[#0f2d4d] group-hover:text-[#0f4c81] transition-colors break-words line-clamp-2">
+                      <h3 className="text-sm sm:text-base font-black text-white group-hover:text-yellow-400 transition-colors break-words line-clamp-2">
                         {m.machineName}
                       </h3>
-                      <span className="text-[10px] sm:text-xs font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md shrink-0">
+                      <span className="text-[10px] sm:text-[11px] font-mono font-bold bg-yellow-400/10 text-yellow-400 px-2 py-0.5 rounded-lg shrink-0 border border-yellow-400/30">
                         {m.costCenter || m.code || m.id}
                       </span>
                     </div>
 
-                    {/* Step bar with numbered badges */}
-                    <div className="flex flex-wrap gap-1 mb-2.5">
-                      {mTasks.length === 0 ? (
-                        <span className="text-xs text-slate-400 italic">Tanımlı bakım yok</span>
-                      ) : (
-                        mTasks.map((t, idx) => {
-                          const st = getTaskStatus(m.id, t.templateId);
-                          const bg =
-                            st === 'red'
-                              ? 'bg-[#FF9999] text-[#7a1414]'
-                              : st === 'tamamlanan'
-                              ? 'bg-[#99FF99] text-[#0d5c2c]'
-                              : 'bg-[#FFB733] text-amber-950';
+                    {/* Interactive Step Indicator Bubbles */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {mTasks.map((t, idx) => {
+                        const st = getTaskStatus(m.id, t.templateId);
+                        const bg =
+                          st === 'red'
+                            ? 'bg-rose-600 text-white shadow-xs animate-pulse'
+                            : st === 'tamamlanan'
+                            ? 'bg-emerald-500 text-black font-black shadow-xs'
+                            : 'bg-slate-800 text-yellow-400 border border-yellow-500/40';
 
-                          return (
-                            <span
-                              key={t.templateId}
-                              title={`${idx + 1}. ${t.task} (${st.toUpperCase()})`}
-                              className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md font-black text-[11px] sm:text-xs flex items-center justify-center border border-black/15 shadow-2xs shrink-0 ${bg}`}
-                            >
-                              {idx + 1}
-                            </span>
-                          );
-                        })
-                      )}
+                        return (
+                          <span
+                            key={t.templateId}
+                            title={`${idx + 1}. ${t.task} (${st.toUpperCase()})`}
+                            className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg font-black text-[11px] sm:text-xs flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${bg}`}
+                          >
+                            {idx + 1}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+                        <span>İlerleme ({completedCount}/{mTasks.length})</span>
+                        <span className={isAllDone ? 'text-emerald-400' : hasRed ? 'text-rose-400' : 'text-yellow-400'}>
+                          %{percent}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            hasRed ? 'bg-rose-500' : isAllDone ? 'bg-emerald-400' : 'bg-yellow-400'
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-[11px] sm:text-xs font-bold text-slate-500 pt-2.5 border-t border-slate-100 flex items-center justify-between w-full">
-                    <span>
-                      {completedCount} / {mTasks.length} tamamlandı
+                  {/* Card Bottom CTA */}
+                  <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-400">
+                      {isAllDone ? '✔ Kontroller Tamam' : hasRed ? '⚠️ Açık RED Kaydı' : 'Kontrol Bekliyor'}
                     </span>
-                    <span className="text-[#0f4c81] font-black group-hover:underline">Seç →</span>
+                    <span className="text-yellow-400 font-black group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                      <span>Bakıma Başla</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-yellow-400" />
+                    </span>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -477,104 +645,84 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   }
 
   // ==========================================
-  // VIEW 2: QR CODE SCANNER
+  // VIEW 2: QR SCAN (Sarı-Siyah)
   // ==========================================
   if (subStep === 'qr') {
     return (
-      <div className="max-w-md mx-auto px-4 py-6 space-y-4">
-        <button
-          type="button"
-          onClick={() => setSubStep('machines')}
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0f4c81] hover:underline"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Makinelere Dön</span>
-        </button>
+      <div className="max-w-md mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
+        {renderBreadcrumbBar()}
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md text-center">
-          <h2 className="text-xl font-black text-[#0f2d4d] mb-1">
-            {selectedMachine?.machineName}
-          </h2>
-          <p className="text-xs text-slate-500 mb-4">
-            Lütfen makine üzerindeki QR güvenlik etiketini kameraya okutun.
-          </p>
+        <div className="bg-[#121824] rounded-2xl border border-yellow-500/30 shadow-xl p-5 text-center space-y-4">
+          <div className="inline-flex p-3 rounded-2xl bg-yellow-400 text-black border border-yellow-300 shadow-md shadow-yellow-500/20">
+            <QrCode className="w-8 h-8" />
+          </div>
 
-          {/* Camera Frame */}
-          <div className="relative w-full aspect-square max-w-[280px] mx-auto bg-slate-900 rounded-2xl overflow-hidden border-4 border-slate-700 shadow-inner flex items-center justify-center">
+          <div>
+            <h2 className="text-lg font-black text-white">Makine QR Kodunu Okutun</h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Doğru makinenin başında olduğunuzu teyit etmek için makine üzerindeki QR etiketi okutunuz.
+            </p>
+          </div>
+
+          <div className="bg-[#0b0f17] border border-yellow-500/30 p-3 rounded-xl text-left text-xs space-y-1">
+            <div className="text-yellow-400 font-extrabold">{selectedMachine?.machineName}</div>
+            <div className="text-slate-400 font-mono text-[11px]">
+              Kod: {selectedMachine?.costCenter || selectedMachine?.code || selectedMachine?.id}
+            </div>
+          </div>
+
+          {/* QR Viewfinder Container with Yellow Laser */}
+          <div className="relative aspect-square max-w-[260px] mx-auto rounded-3xl overflow-hidden bg-black border-4 border-yellow-400/50 shadow-inner flex items-center justify-center">
             <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-            <div className="absolute inset-4 border-2 border-dashed border-sky-400/80 rounded-xl pointer-events-none animate-pulse" />
+            <div className="absolute inset-0 border-2 border-dashed border-yellow-400/60 m-6 rounded-2xl pointer-events-none" />
+            <div className="absolute inset-x-0 h-1 bg-yellow-400 shadow-[0_0_15px_#facc15] animate-scan-sweep pointer-events-none" />
           </div>
 
           {qrError && (
-            <div className="mt-3 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-semibold">
+            <div className="text-[11px] text-amber-300 bg-amber-950/40 p-2.5 rounded-xl border border-amber-800/60">
               {qrError}
             </div>
           )}
 
-          {/* Quick Simulation Buttons */}
-          <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Hızlı QR Doğrulama:
-            </div>
+          {/* Fast Verification Buttons */}
+          <div className="space-y-2 pt-2">
             <button
               type="button"
               onClick={() => handleSimulateQrScan(selectedMachine?.machineName || '')}
-              className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-xs transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-3 px-4 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-sm shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Check className="w-4 h-4" />
-              <span>Doğru QR Kodunu Oku ({selectedMachine?.code || selectedMachine?.id})</span>
+              <Check className="w-4 h-4 text-black" />
+              <span>QR Doğrulandı & Kontrollere Geç</span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleSimulateQrScan('HATALI-MAKINE-999')}
-              className="w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors"
+              onClick={() => setSubStep('machines')}
+              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
             >
-              Farklı / Yanlış QR Kodunu Test Et
+              Farklı Makine Seç
             </button>
           </div>
         </div>
 
         {/* Wrong QR Modal */}
         {wrongQrModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95">
-              <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                <AlertTriangle className="w-8 h-8" />
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs">
+            <div className="bg-[#121824] rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-rose-500/50 space-y-3 animate-in zoom-in-95">
+              <div className="w-12 h-12 bg-rose-950 text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-600/40">
+                <AlertTriangle className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-black text-slate-900 mb-1">Hatalı Makine Etiketi!</h3>
-              <p className="text-xs text-slate-600 mb-4">
+              <h3 className="text-base font-black text-white">Hatalı Makine Etiketi!</h3>
+              <p className="text-xs text-slate-400">
                 Okutulan QR kodu seçtiğiniz makine ile uyuşmuyor. Lütfen doğru makinenin başında olduğunuzdan emin olun.
               </p>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-left text-xs mb-4 space-y-1">
-                <div>
-                  <b className="text-slate-700">Seçilen Makine:</b>{' '}
-                  <span className="text-emerald-700 font-bold">{wrongQrModal.expected}</span>
-                </div>
-                <div>
-                  <b className="text-slate-700">Okunan Kod:</b>{' '}
-                  <span className="text-red-600 font-bold">{wrongQrModal.scanned}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setWrongQrModal(null)}
-                  className="flex-1 py-2.5 bg-[#0f4c81] text-white font-bold rounded-xl text-sm"
+                  className="flex-1 py-2.5 bg-yellow-400 text-black font-black rounded-xl text-sm"
                 >
-                  Tekrar Okut
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWrongQrModal(null);
-                    setSubStep('machines');
-                  }}
-                  className="py-2.5 px-4 bg-slate-200 text-slate-800 font-bold rounded-xl text-sm"
-                >
-                  Vazgeç
+                  Tekrar Dene
                 </button>
               </div>
             </div>
@@ -585,105 +733,129 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   }
 
   // ==========================================
-  // VIEW 3: TASKS CHECKLIST FOR MACHINE
+  // VIEW 3: TASKS CHECKLIST (Sarı-Siyah)
   // ==========================================
   if (subStep === 'tasks') {
-    return (
-      <div className="max-w-4xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-4">
-        <button
-          type="button"
-          onClick={() => setSubStep('machines')}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#0f4c81] hover:underline"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Makinelere Dön</span>
-        </button>
+    const completedCount = machineTasks.filter(
+      (t) => getTaskStatus(selectedMachine!.id, t.templateId) !== 'bekleyen'
+    ).length;
+    const progressPercent = machineTasks.length > 0 ? Math.round((completedCount / machineTasks.length) * 100) : 0;
 
-        {/* Machine Header */}
-        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
-          <div className="min-w-0">
-            <h2 className="text-base sm:text-xl font-black text-[#0f2d4d] break-words">
-              {selectedMachine?.machineName}
-            </h2>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">
-              {machineTasks.length} adet haftalık kontrol maddesi
-            </p>
+    return (
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-3 sm:py-5 space-y-3.5">
+        {renderBreadcrumbBar()}
+
+        {/* Machine Header Card */}
+        <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider block">
+                {selectedMachine?.costCenter || selectedMachine?.code || 'Makine'}
+              </span>
+              <h2 className="text-lg sm:text-2xl font-black text-white break-words">
+                {selectedMachine?.machineName}
+              </h2>
+            </div>
+
+            <div className="text-right">
+              <div className="text-xs font-black text-yellow-400">%{progressPercent} Tamamlandı</div>
+              <div className="text-[11px] text-slate-400 font-semibold">{completedCount} / {machineTasks.length} Kontrol</div>
+            </div>
           </div>
 
-          {isAdmin && (
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-lg text-[11px] font-bold shrink-0">
-              <span>Yönetici: QR Atlandı</span>
-            </div>
-          )}
+          {/* Progress bar */}
+          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-yellow-400 transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
 
         {/* Department Colors Legend */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-[11px] sm:text-xs font-bold text-slate-700">
-          <span className="text-slate-400 font-semibold mr-1">Birimler:</span>
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 bg-[#0e131d] p-3 rounded-xl border border-slate-800 text-[11px] font-semibold text-slate-300">
+          <span className="text-yellow-400 font-black mr-1">Birimler:</span>
           {DEPARTMENTS.map((d) => (
-            <span key={d.kod} className="flex items-center gap-1">
-              <span className={`w-3 h-3 rounded-md ${d.bgClass} border border-black/20`} />
+            <span key={d.kod} className="flex items-center gap-1 bg-[#161d2b] px-2 py-0.5 rounded-lg border border-slate-700">
+              <span className={`w-2.5 h-2.5 rounded-sm ${d.bgClass} border border-black/20`} />
               <span>{d.ad}</span>
             </span>
           ))}
         </div>
 
         {/* Task List Items */}
-        <div className="space-y-2.5 sm:space-y-3">
+        <div className="space-y-2 sm:space-y-2.5">
           {machineTasks.map((t, idx) => {
             const st = getTaskStatus(selectedMachine!.id, t.templateId);
             const dept = getDepartmentConfig(t.system);
-
-            const cardBg = dept ? dept.bgClass : 'bg-white';
-            const cardText = dept ? dept.textClass : 'text-slate-900';
-
-            const statusBadgeBg =
-              st === 'red'
-                ? 'bg-[#FF9999] text-[#7a1414] border-[#7a1414]/30'
-                : st === 'tamamlanan'
-                ? 'bg-[#99FF99] text-[#0d5c2c] border-[#0d5c2c]/30'
-                : 'bg-[#FFB733] text-amber-950 border-amber-800/30';
 
             return (
               <button
                 key={t.templateId}
                 type="button"
                 onClick={() => handleOpenTask(t)}
-                className={`w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-black/15 shadow-xs hover:shadow-md transition-all text-left flex items-start gap-2.5 sm:gap-4 ${cardBg} ${cardText} hover:scale-[1.005] cursor-pointer overflow-hidden`}
+                className={`w-full p-3.5 sm:p-4 rounded-2xl border transition-all text-left flex items-start gap-3 sm:gap-4 cursor-pointer active:scale-[0.99] ${
+                  st === 'red'
+                    ? 'bg-rose-950/30 border-rose-500/60 shadow-md'
+                    : st === 'tamamlanan'
+                    ? 'bg-emerald-950/20 border-emerald-500/50 shadow-md'
+                    : 'bg-[#121824] border-slate-800 hover:border-yellow-400 shadow-md'
+                }`}
               >
-                {/* Step Number with status color */}
+                {/* Step Number with status indicator */}
                 <div
-                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl font-black text-xs sm:text-base shrink-0 flex items-center justify-center border-2 shadow-xs ${statusBadgeBg}`}
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl font-black text-xs sm:text-sm shrink-0 flex items-center justify-center border shadow-xs ${
+                    st === 'red'
+                      ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                      : st === 'tamamlanan'
+                      ? 'bg-emerald-500 text-black border-emerald-400'
+                      : 'bg-slate-800 text-yellow-400 border-yellow-500/40'
+                  }`}
                 >
                   {idx + 1}
                 </div>
 
                 {/* Task Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-xs sm:text-sm leading-snug mb-1 break-words">
+                  <div className="font-extrabold text-xs sm:text-sm leading-snug mb-1 text-white break-words">
                     {t.task}
                   </div>
-                  <div className="text-[11px] sm:text-xs opacity-85 font-medium flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                    <span>Bölge: <b>{t.region || '-'}</b></span>
-                    {t.part && <span>Parça: <b>{t.part}</b></span>}
-                    {t.targetValue && <span>Hedef: <b>{t.targetValue}</b></span>}
+                  <div className="text-[11px] text-slate-400 font-medium flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span>Bölge: <b className="text-slate-300">{t.region || '-'}</b></span>
+                    {t.part && <span>· Parça: <b className="text-slate-300">{t.part}</b></span>}
+                    {t.targetValue && <span>· Hedef: <b className="text-yellow-400">{t.targetValue}</b></span>}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                    <span className="text-[10px] sm:text-[11px] font-black bg-white/90 text-slate-800 px-2 py-0.5 rounded-md border border-black/15 shadow-2xs">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span className="text-[10px] font-black bg-[#18202e] text-yellow-400 px-2 py-0.5 rounded-md border border-yellow-400/30">
                       {dept?.ad || t.system || 'Genel'}
                     </span>
                     {t.photoRequired && (
-                      <span className="text-[10px] sm:text-[11px] font-black bg-[#b11f2e] text-white px-2 py-0.5 rounded-md shadow-2xs flex items-center gap-1">
-                        <Camera className="w-3 h-3" />
-                        <span>Fotoğraf zorunlu</span>
+                      <span className="text-[10px] font-black bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Camera className="w-3 h-3 text-rose-400" />
+                        <span>Fotoğraf Zorunlu</span>
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="shrink-0 self-center text-xs sm:text-sm font-black opacity-75">
-                  {st === 'red' ? '🔴' : st === 'tamamlanan' ? '🟢' : '→'}
+                {/* Status icon right */}
+                <div className="shrink-0 self-center">
+                  {st === 'red' ? (
+                    <span className="px-2 py-1 bg-rose-600 text-white text-xs font-black rounded-lg">
+                      RED
+                    </span>
+                  ) : st === 'tamamlanan' ? (
+                    <span className="px-2 py-1 bg-emerald-500 text-black text-xs font-black rounded-lg flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      <span>Tamam</span>
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 bg-yellow-400 text-black text-xs font-black rounded-lg flex items-center gap-1 shadow-sm">
+                      <span>Kontrol</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -694,7 +866,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   }
 
   // ==========================================
-  // VIEW 4: TASK EXECUTION & CONTROL SCREEN
+  // VIEW 4: TASK EXECUTION & CONTROL SCREEN (Sarı-Siyah)
   // ==========================================
   const dept = getDepartmentConfig(selectedTask?.system);
   const isRed = result === 'RED';
@@ -706,29 +878,21 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const taskSpeechText = `${selectedMachine?.machineName}, ${selectedTask?.orderNo || 1}. bakım kontrolü. Görev: ${selectedTask?.task}. İlgili birim: ${dept?.ad || selectedTask?.system || 'Belirtilmemiş'}. Bölge: ${selectedTask?.region || 'Genel'}. İstenen hedef değer: ${selectedTask?.targetValue || 'Görsel uygunluk'}. ${isPhotoRequired ? 'Uyarı: Yönetici bu bakım için kanıt fotoğrafı istemektedir.' : ''}`;
 
   return (
-    <div className="max-w-3xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-4">
-      <button
-        type="button"
-        onClick={() => setSubStep('tasks')}
-        className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#0f4c81] hover:underline"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Bakım Listesine Dön</span>
-      </button>
+    <div className="max-w-2xl mx-auto px-3 sm:px-6 py-3 sm:py-5 space-y-3.5">
+      {renderBreadcrumbBar()}
 
       {/* Control Header Card */}
-      <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+      <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
           <div className="min-w-0">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block truncate">
+            <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider block truncate">
               {selectedMachine?.machineName}
             </span>
-            <h2 className="text-base sm:text-xl font-black text-[#0f2d4d]">
+            <h2 className="text-base sm:text-lg font-black text-white">
               {selectedTask?.orderNo || 1}. Kontrol Maddesi
             </h2>
           </div>
 
-          {/* FEATURE 1: Audio Guidance button */}
           <AudioPlayerButton
             text={taskSpeechText}
             label="Sesli Dinle"
@@ -741,120 +905,137 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         {selectedTask?.referenceImageUrl ? (
           <div
             onClick={() => setRefImageModalOpen(true)}
-            className="relative w-full max-h-56 sm:max-h-72 aspect-4/3 sm:aspect-16/9 bg-slate-900 rounded-xl overflow-hidden border border-slate-300 cursor-zoom-in group shadow-inner"
+            className="relative w-full max-h-56 sm:max-h-64 aspect-16/9 bg-black rounded-xl overflow-hidden border border-yellow-500/30 cursor-zoom-in group shadow-inner"
           >
             <img
               src={selectedTask.referenceImageUrl}
               alt="Referans Resim"
               className="w-full h-full object-contain"
             />
-            <div className="absolute right-2 bottom-2 bg-black/70 text-white text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 opacity-90 group-hover:opacity-100">
+            <div className="absolute right-2 bottom-2 bg-yellow-400 text-black text-[11px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md">
               <Maximize2 className="w-3 h-3" />
               <span>Büyüt</span>
             </div>
           </div>
-        ) : (
-          <div className="w-full py-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-semibold">
-            Referans teknik resim yok
-          </div>
-        )}
+        ) : null}
 
-        {/* Task Specification Info Card */}
-        <div className={`p-3 sm:p-4 rounded-xl border ${dept ? dept.bgClass : 'bg-slate-50'} ${dept ? dept.textClass : 'text-slate-900'}`}>
-          <div className="text-[11px] uppercase font-extrabold tracking-wider opacity-75 mb-0.5">
+        {/* Task Specification Info */}
+        <div className="p-3.5 bg-[#0b0f17] rounded-xl border border-slate-800 text-white space-y-2">
+          <div className="text-[10px] uppercase font-bold tracking-wider text-yellow-400">
             Yapılacak Kontrol
           </div>
-          <div className="text-sm sm:text-base font-black leading-snug mb-2 break-words">
+          <div className="text-sm sm:text-base font-black leading-snug break-words">
             {selectedTask?.task}
           </div>
 
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            <span className="font-extrabold bg-white/90 text-slate-900 px-2 py-0.5 rounded-md border border-black/15 shadow-2xs">
+          <div className="flex flex-wrap gap-1.5 text-xs pt-1 border-t border-slate-800">
+            <span className="font-bold bg-[#18202e] text-yellow-400 px-2 py-0.5 rounded-md border border-yellow-400/30">
               Birim: {dept?.ad || selectedTask?.system || 'Genel'}
             </span>
-            <span className="font-extrabold bg-white/90 text-slate-900 px-2 py-0.5 rounded-md border border-black/15 shadow-2xs">
+            <span className="font-bold bg-[#18202e] text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
               Bölge: {selectedTask?.region || '-'}
             </span>
             {selectedTask?.part && (
-              <span className="font-extrabold bg-white/90 text-slate-900 px-2 py-0.5 rounded-md border border-black/15 shadow-2xs">
+              <span className="font-bold bg-[#18202e] text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
                 Parça: {selectedTask?.part}
               </span>
             )}
           </div>
 
           {selectedTask?.targetValue && (
-            <div className="mt-2 pt-2 border-t border-black/10 text-xs sm:text-sm">
-              <span className="opacity-80">Hedef Değer:</span>{' '}
-              <b className="font-black underline">{selectedTask.targetValue}</b>
+            <div className="pt-2 text-xs sm:text-sm font-medium text-slate-300">
+              <span>Hedef Değer:</span>{' '}
+              <b className="font-black text-yellow-400">{selectedTask.targetValue}</b>
             </div>
           )}
         </div>
       </div>
 
-      {/* Control Execution Form */}
-      <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm space-y-3.5 sm:space-y-4">
-        {/* Measured Value Input (Mandatory if targetValue exists) */}
+      {/* Control Execution Form (Sarı-Siyah) */}
+      <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-4">
+        {/* Measured Value Input */}
         {selectedTask?.targetValue && (
-          <div className="p-3 sm:p-4 bg-sky-50 rounded-xl border-2 border-sky-600">
-            <label className="block text-xs sm:text-sm font-black text-sky-950 mb-1 flex items-center justify-between">
+          <div className="p-3.5 bg-yellow-400/10 rounded-xl border border-yellow-400/40">
+            <label className="block text-xs font-black text-yellow-400 mb-1 flex items-center justify-between">
               <span>Ölçülen Değer / Tespit</span>
-              <span className="text-[9px] sm:text-[10px] font-black bg-sky-700 text-white px-2 py-0.5 rounded-full uppercase">
+              <span className="text-[9px] font-black bg-yellow-400 text-black px-2 py-0.5 rounded-full uppercase">
                 ZORUNLU
               </span>
             </label>
-            <div className="text-[11px] sm:text-xs text-slate-600 mb-1.5 font-medium">
-              İstenen Referans: <b>{selectedTask.targetValue}</b>
+            <div className="text-[11px] text-slate-400 mb-1.5 font-medium">
+              İstenen Referans: <b className="text-yellow-400">{selectedTask.targetValue}</b>
             </div>
             <input
               type="text"
               value={measuredValue}
               onChange={(e) => setMeasuredValue(e.target.value)}
               placeholder="Ör: 4.8 bar / 48°C / 8.2mm"
-              className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 bg-white border border-sky-300 rounded-lg text-base font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
+              className="w-full px-3 py-2.5 bg-[#0b0f17] border border-yellow-400/60 rounded-xl text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             />
           </div>
         )}
 
         {/* Result Selection: UYGUN vs RED */}
         <div>
-          <label className="block text-xs sm:text-sm font-black text-slate-800 mb-1.5">
-            Bakım Sonucu <span className="text-red-600">*</span>
+          <label className="block text-xs sm:text-sm font-black text-white mb-2">
+            Bakım Sonucu <span className="text-rose-400">*</span>
           </label>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setResult('UYGUN')}
-              className={`py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl font-black text-sm sm:text-base border-2 transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+              className={`py-3.5 px-3 sm:px-5 rounded-2xl font-black text-base border-2 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 ${
                 result === 'UYGUN'
-                  ? 'bg-[#99FF99] border-[#0d5c2c] text-[#0d5c2c] shadow-sm ring-2 ring-emerald-300'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  ? 'bg-emerald-500 border-emerald-400 text-black shadow-lg ring-4 ring-emerald-500/20'
+                  : 'bg-[#0b0f17] border-slate-700 text-slate-300 hover:border-emerald-500 hover:text-white'
               }`}
             >
-              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <CheckCircle2 className={`w-5 h-5 ${result === 'UYGUN' ? 'text-black' : 'text-emerald-400'}`} />
               <span>UYGUN</span>
             </button>
 
             <button
               type="button"
               onClick={() => setResult('RED')}
-              className={`py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl font-black text-sm sm:text-base border-2 transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+              className={`py-3.5 px-3 sm:px-5 rounded-2xl font-black text-base border-2 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 ${
                 result === 'RED'
-                  ? 'bg-[#FF9999] border-[#7a1414] text-[#7a1414] shadow-sm ring-2 ring-red-300'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  ? 'bg-rose-600 border-rose-500 text-white shadow-lg ring-4 ring-rose-500/20 animate-pulse'
+                  : 'bg-[#0b0f17] border-slate-700 text-slate-300 hover:border-rose-500 hover:text-white'
               }`}
             >
-              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <AlertTriangle className={`w-5 h-5 ${result === 'RED' ? 'text-white' : 'text-rose-400'}`} />
               <span>RED (Arıza)</span>
             </button>
           </div>
         </div>
 
-        {/* Description Field (Mandatory 10 chars if RED) */}
+        {/* Quick Defect Reason Chips for RED */}
+        {isRed && (
+          <div className="p-3 bg-rose-950/40 rounded-xl border border-rose-600/50 space-y-2 animate-in fade-in duration-150">
+            <div className="text-[11px] font-black text-rose-400">
+              ⚡ Hızlı Arıza Sebebi Seçin:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_DEFECT_REASONS.map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => handleAddPresetReason(reason)}
+                  className="px-2.5 py-1 bg-[#161d2b] hover:bg-rose-900 border border-rose-700 text-rose-200 text-xs font-bold rounded-lg transition-colors shadow-2xs active:scale-95 cursor-pointer"
+                >
+                  + {reason}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Description Field */}
         <div>
-          <label className="block text-xs sm:text-sm font-black text-slate-800 mb-1 flex items-center justify-between">
-            <span>Açıklama</span>
+          <label className="block text-xs sm:text-sm font-black text-white mb-1 flex items-center justify-between">
+            <span>Açıklama / Notlar</span>
             {isRed && (
-              <span className="text-[9px] sm:text-[10px] font-black bg-[#FF9999] text-[#7a1414] px-1.5 py-0.5 rounded-full uppercase">
+              <span className="text-[10px] font-black bg-rose-900 text-rose-200 px-2 py-0.5 rounded-full uppercase border border-rose-700">
                 RED İÇİN ZORUNLU
               </span>
             )}
@@ -868,20 +1049,20 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                 ? 'Arızanın tanımı nedir? Hangi parçada hasar var? (En az 10 karakter)...'
                 : 'Açıklama veya ilave notlar (isteğe bağlı)...'
             }
-            className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-50 border rounded-xl text-base sm:text-sm font-medium focus:outline-none transition-all ${
+            className={`w-full px-3.5 py-2.5 bg-[#0b0f17] border rounded-xl text-base sm:text-sm font-medium focus:outline-none transition-all text-white ${
               isRed && descLength < 10
-                ? 'border-red-400 focus:ring-2 focus:ring-red-400 bg-red-50/30'
-                : 'border-slate-300 focus:ring-2 focus:ring-[#0f4c81]'
+                ? 'border-rose-500 focus:ring-2 focus:ring-rose-500'
+                : 'border-slate-700 focus:ring-2 focus:ring-yellow-400'
             }`}
           />
           {isRed && (
             <div className="flex items-center justify-between mt-1 text-xs">
-              <span className="text-red-700 font-bold text-[11px] sm:text-xs">
+              <span className="text-rose-400 font-bold text-[11px] sm:text-xs">
                 {descLength < 10
                   ? `Lütfen en az ${10 - descLength} karakter daha yazın.`
-                  : '✔ Açıklama uygun.'}
+                  : '✔ Açıklama yeterli.'}
               </span>
-              <span className={`font-black ${descLength >= 10 ? 'text-emerald-700' : 'text-red-600'}`}>
+              <span className={`font-black ${descLength >= 10 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {descLength} / 10
               </span>
             </div>
@@ -890,20 +1071,20 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
         {/* Proof Photo Capture Area */}
         <div
-          className={`p-3 sm:p-4 rounded-xl border-2 transition-all ${
+          className={`p-3.5 sm:p-4 rounded-xl border-2 transition-all ${
             isPhotoRequired && !proofImage
-              ? 'bg-red-50/50 border-red-400'
+              ? 'bg-rose-950/20 border-rose-500/70'
               : proofImage
-              ? 'bg-emerald-50/50 border-emerald-400'
-              : 'bg-slate-50 border-slate-300'
+              ? 'bg-emerald-950/20 border-emerald-500/70'
+              : 'bg-[#0b0f17] border-slate-800'
           }`}
         >
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700" />
-              <span className="text-xs sm:text-sm font-black text-slate-800">Kanıt Fotoğrafı</span>
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <Camera className="w-4 h-4 text-yellow-400" />
+              <span className="text-xs sm:text-sm font-black text-white">Kanıt Fotoğrafı</span>
               {isPhotoRequired && (
-                <span className="text-[9px] sm:text-[10px] font-black bg-[#b11f2e] text-white px-1.5 py-0.5 rounded-full uppercase">
+                <span className="text-[9px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full uppercase">
                   ZORUNLU
                 </span>
               )}
@@ -913,7 +1094,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <button
                 type="button"
                 onClick={() => setProofImageModalOpen(true)}
-                className="text-xs font-bold text-sky-700 hover:underline flex items-center gap-1"
+                className="text-xs font-bold text-yellow-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
                 <span>Büyüt</span>
@@ -922,11 +1103,11 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           </div>
 
           {/* Photo Actions & Preview */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <label className="w-full sm:w-auto cursor-pointer">
-              <span className="w-full sm:w-auto py-2 sm:py-2.5 px-3 sm:px-4 bg-[#0f4c81] hover:bg-[#0c3c66] text-white text-xs sm:text-sm font-extrabold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2">
-                <Upload className="w-4 h-4" />
-                <span>{proofImage ? 'Yeniden Çek / Yükle' : 'Fotoğraf Çek / Yükle'}</span>
+              <span className="w-full sm:w-auto py-2.5 px-4 bg-yellow-400 hover:bg-yellow-300 text-black text-xs sm:text-sm font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-95">
+                <Upload className="w-4 h-4 text-black" />
+                <span>{proofImage ? 'Yeniden Çek / Değiştir' : 'Fotoğraf Çek / Yükle'}</span>
               </span>
               <input
                 type="file"
@@ -938,15 +1119,15 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             </label>
 
             {proofImage && (
-              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <div className="flex items-center gap-3 w-full sm:w-auto bg-[#0b0f17] p-2 rounded-xl border border-slate-700 shadow-2xs">
                 <img
                   src={proofImage}
                   alt="Önizleme"
                   onClick={() => setProofImageModalOpen(true)}
                   className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-lg border-2 border-emerald-500 shadow-xs cursor-pointer shrink-0"
                 />
-                <div className="text-xs text-slate-600 min-w-0">
-                  <div className="font-bold text-emerald-700 truncate">Fotoğraf eklendi</div>
+                <div className="text-xs text-slate-300 min-w-0">
+                  <div className="font-bold text-emerald-400 truncate">Fotoğraf eklendi ✔</div>
                   <div className="text-[10px] sm:text-[11px] text-slate-400">
                     {proofImageFile ? `${Math.round(proofImageFile.size / 1024)} KB` : 'Hazır'}
                   </div>
@@ -955,23 +1136,23 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             )}
           </div>
 
-          {/* FEATURE 3: AI Visual Defect Inspection Button (gemini-3.1-pro-preview) */}
+          {/* FEATURE 3: AI Visual Defect Inspection Button */}
           {proofImage && (
-            <div className="mt-4 pt-3 border-t border-slate-200">
+            <div className="mt-3.5 pt-3 border-t border-slate-800">
               <button
                 type="button"
                 onClick={handleRunAiInspection}
                 disabled={aiAnalyzing}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {aiAnalyzing ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-black" />
                     <span>Gemini 3.1 Pro Fotoğrafı İnceliyor...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <Sparkles className="w-4 h-4 text-black" />
                     <span>AI Görsel Kusur & Arıza Tespiti Yap (Gemini 3.1 Pro)</span>
                   </>
                 )}
@@ -979,25 +1160,25 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
               {/* Inspection Results Box */}
               {aiAnalysisResult && (
-                <div className="mt-3 p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-950 space-y-2">
-                  <div className="flex items-center justify-between font-black text-indigo-900 border-b border-indigo-200/60 pb-1.5">
+                <div className="mt-3 p-3 bg-[#0b0f17] border border-yellow-500/40 rounded-xl text-xs text-slate-100 space-y-2">
+                  <div className="flex items-center justify-between font-black text-yellow-400 border-b border-yellow-500/20 pb-1.5">
                     <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-indigo-600" />
+                      <Sparkles className="w-4 h-4 text-yellow-400" />
                       <span>Gemini Endüstriyel Analiz Raporu</span>
                     </span>
                     {aiAnalysisVerdict && (
                       <span
                         className={`px-2 py-0.5 rounded-full font-black text-[10px] ${
                           aiAnalysisVerdict === 'RED'
-                            ? 'bg-red-600 text-white'
-                            : 'bg-emerald-600 text-white'
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-emerald-500 text-black'
                         }`}
                       >
                         ÖNERİ: {aiAnalysisVerdict}
                       </span>
                     )}
                   </div>
-                  <div className="whitespace-pre-line leading-relaxed font-medium">
+                  <div className="whitespace-pre-line leading-relaxed font-medium text-slate-200">
                     {aiAnalysisResult}
                   </div>
                 </div>
@@ -1011,34 +1192,37 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           <div
             className={`p-3.5 rounded-xl text-sm font-bold ${
               saveMessage.type === 'error'
-                ? 'bg-red-50 text-red-800 border border-red-200'
-                : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                ? 'bg-rose-950/60 text-rose-200 border border-rose-700'
+                : 'bg-emerald-950/60 text-emerald-200 border border-emerald-700'
             }`}
           >
             {saveMessage.text}
           </div>
         )}
 
-        {/* Submit Save Button */}
+        {/* Submit Save Button (Sarı-Siyah) */}
         <button
           type="button"
           onClick={handleSaveControl}
           disabled={saveDisabled}
-          className={`w-full py-4 px-6 rounded-xl font-black text-base shadow-md transition-all flex items-center justify-center gap-2 ${
+          className={`w-full py-4 px-6 rounded-2xl font-black text-base shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] ${
             saveDisabled
-              ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-              : 'bg-[#0f4c81] hover:bg-[#0c3c66] text-white'
+              ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+              : 'bg-yellow-400 hover:bg-yellow-300 text-black shadow-yellow-500/25'
           }`}
         >
           {saveLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin text-black" />
               <span>Kaydediliyor...</span>
             </>
           ) : isPhotoRequired && !proofImage ? (
             <span>📷 Önce Kanıt Fotoğrafı Çekiniz</span>
           ) : (
-            <span>Kontrolü Kaydet</span>
+            <>
+              <span>Kontrolü Kaydet & Sonrakine Geç</span>
+              <ArrowRight className="w-5 h-5 text-black" />
+            </>
           )}
         </button>
       </div>
@@ -1047,20 +1231,20 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       {refImageModalOpen && selectedTask?.referenceImageUrl && (
         <div
           onClick={() => setRefImageModalOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-xs"
         >
           <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
             <button
               type="button"
               onClick={() => setRefImageModalOpen(false)}
-              className="absolute -top-10 right-0 text-white hover:text-slate-300 p-1"
+              className="absolute -top-10 right-0 text-yellow-400 hover:text-white p-1"
             >
               <X className="w-7 h-7" />
             </button>
             <img
               src={selectedTask.referenceImageUrl}
               alt="Referans Resim"
-              className="max-w-full max-h-[80vh] object-contain rounded-xl bg-slate-900 shadow-2xl"
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl bg-black border border-yellow-500/40 shadow-2xl"
             />
           </div>
         </div>
@@ -1070,20 +1254,20 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       {proofImageModalOpen && proofImage && (
         <div
           onClick={() => setProofImageModalOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-xs"
         >
           <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
             <button
               type="button"
               onClick={() => setProofImageModalOpen(false)}
-              className="absolute -top-10 right-0 text-white hover:text-slate-300 p-1"
+              className="absolute -top-10 right-0 text-yellow-400 hover:text-white p-1"
             >
               <X className="w-7 h-7" />
             </button>
             <img
               src={proofImage}
               alt="Kanıt Fotoğrafı"
-              className="max-w-full max-h-[80vh] object-contain rounded-xl bg-slate-900 shadow-2xl"
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl bg-black border border-yellow-500/40 shadow-2xl"
             />
           </div>
         </div>
