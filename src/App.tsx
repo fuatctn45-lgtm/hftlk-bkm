@@ -15,7 +15,7 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [currentScreen, setCurrentScreen] = useState<
     'home' | 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch'
-  >('home');
+  >('operator');
   const [machines, setMachines] = useState<Machine[]>([]);
   const [templates, setTemplates] = useState<MaintenanceTemplate[]>([]);
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
@@ -188,18 +188,18 @@ export default function App() {
       </main>
 
       {/* Corporate Footer with live E-Tablo status */}
-      <footer className="bg-white border-t border-slate-200 py-3 px-4 text-center text-xs text-slate-500 font-medium print:hidden">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            <span className="font-bold text-slate-700">Google E-Tablo Canlı Bağlantısı Aktif</span>
+      <footer className="bg-white border-t border-slate-200 py-2.5 sm:py-3 px-3 sm:px-4 text-center text-[11px] sm:text-xs text-slate-500 font-medium print:hidden">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0" />
+            <span className="font-bold text-slate-700">Google E-Tablo Aktif</span>
             <span>•</span>
             <span>{machines.length} Makine</span>
             <span>•</span>
             <span>{records.length} Kayıt</span>
-            {lastSyncTime && <span>(Son senkron: {lastSyncTime})</span>}
+            {lastSyncTime && <span className="hidden xs:inline">({lastSyncTime})</span>}
           </div>
-          <span>AKG Endüstriyel Soğutma Sistemleri • Haftalık Bakım CMMS V5.5.0</span>
+          <span className="text-[10px] sm:text-xs text-slate-400">AKG Soğutma • CMMS V5.5.0</span>
         </div>
       </footer>
 

@@ -176,15 +176,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3.5 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+      <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center">
-              <Settings className="w-5 h-5" />
+          <div className="flex items-center gap-2 mb-0.5">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#0f2d4d]">
+            <h2 className="text-lg sm:text-2xl font-black text-[#0f2d4d]">
               Admin Bakım Tanımı Paneli
             </h2>
           </div>
@@ -195,9 +195,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </div>
 
       {/* Form Section */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <h3 className="text-lg font-black text-[#0f2d4d] border-b border-slate-100 pb-3 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-[#0f4c81]" />
+      <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm space-y-3.5 sm:space-y-4">
+        <h3 className="text-base sm:text-lg font-black text-[#0f2d4d] border-b border-slate-100 pb-2.5 flex items-center gap-2">
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-[#0f4c81]" />
           <span>{editingId ? 'Bakım Tanımını Düzenle' : 'Yeni Bakım Tanımı Ekle'}</span>
         </h3>
 

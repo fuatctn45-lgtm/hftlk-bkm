@@ -142,30 +142,30 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-gradient-to-r from-[#0b192c] via-[#0f4c81] to-[#0d2e4e] text-white shadow-lg border-b border-sky-900/60 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex items-center justify-between gap-3">
-        {/* Left: Brand Identity with Modern Tech Polish */}
+    <header className="sticky top-0 z-50 bg-[#0f4c81] text-white shadow-md border-b border-sky-900/40">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2">
+        {/* Left: Brand Identity & Operator */}
         <div
           onClick={() => handleSelectNav('home')}
-          className="flex items-center gap-3 cursor-pointer group select-none min-w-0"
+          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none min-w-0"
         >
-          <div className="bg-white rounded-xl p-1.5 shadow-sm group-hover:scale-105 transition-transform shrink-0 border border-white/20">
-            <AkgLogo size="sm" />
+          <div className="bg-white rounded-xl p-1.5 shadow-sm group-hover:scale-105 transition-transform shrink-0">
+            <AkgLogo size="xs" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight truncate text-white">
-                Haftalık Bakım CMMS
+              <h1 className="text-sm sm:text-base font-black tracking-tight leading-tight truncate text-white">
+                AKG Haftalık Bakım CMMS
               </h1>
-              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/20 text-sky-200 border border-sky-400/30">
+              <span className="hidden sm:inline-block px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-white/20 text-sky-100">
                 V5.5.0
               </span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-sky-200/90">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-              <span className="font-semibold truncate max-w-[130px] sm:max-w-xs">{operatorName}</span>
+            <div className="flex items-center gap-1.5 text-xs text-sky-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block shrink-0" />
+              <span className="font-bold truncate max-w-[120px] sm:max-w-xs">{operatorName}</span>
               {isAdmin && (
-                <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-1.5 py-0.2 rounded uppercase tracking-wider shrink-0 shadow-xs">
+                <span className="bg-amber-400 text-slate-950 font-black text-[9px] px-1.5 py-0.2 rounded uppercase tracking-wider shrink-0">
                   YÖNETİCİ
                 </span>
               )}
@@ -173,35 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: Desktop Navigation Bar (Direct 1-Click Access) */}
-        <nav className="hidden xl:flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/10 backdrop-blur-xs">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentScreen === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleSelectNav(item.id)}
-                className={`relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isActive
-                    ? 'bg-white text-[#0f4c81] shadow-md font-extrabold'
-                    : 'text-sky-100 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#0f4c81]' : 'text-sky-300'}`} />
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span className="ml-0.5 bg-red-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-bounce">
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Right: Quick Action Controls */}
+        {/* Right: Quick Action Controls + Açılır Menü */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Direct Red Warning Quick Button if any active defects */}
           {redCount > 0 && (
@@ -209,60 +181,46 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={() => handleSelectNav('redList')}
               title={`${redCount} açık arıza kaydı var`}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-red-600/30 hover:bg-red-600/40 border border-red-400/50 text-red-100 text-xs font-black transition-all shadow-xs"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-600 text-white hover:bg-red-700 text-xs font-black transition-all shadow-xs cursor-pointer animate-pulse"
             >
-              <AlertTriangle className="w-4 h-4 text-red-300 animate-pulse" />
+              <AlertTriangle className="w-3.5 h-3.5 text-white shrink-0" />
               <span>{redCount} RED</span>
             </button>
           )}
 
-          {/* Quick Sync Button with Tooltip */}
+          {/* Quick Sync Button */}
           {onSync && (
             <button
               type="button"
               onClick={onSync}
               disabled={syncing}
               title={`Google E-Tablodan canlı yenile (${machinesCount} makine, ${recordsCount} kayıt)`}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-sky-100 transition-all cursor-pointer active:scale-95"
+              className="inline-flex items-center justify-center p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-sky-100 transition-all cursor-pointer active:scale-95"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-emerald-300 ${syncing ? 'animate-spin' : ''}`} />
-              <span className="hidden md:inline">{syncing ? 'Yenileniyor...' : 'Senkron'}</span>
+              <RefreshCw className={`w-4 h-4 text-emerald-300 ${syncing ? 'animate-spin' : ''}`} />
             </button>
           )}
 
-          {/* Direct ZIP Download */}
-          <a
-            href="/api/export-project-zip"
-            download="AKG_CMMS_V5.5.0_Source.zip"
-            title="Tüm proje kaynak kodlarını temiz ZIP olarak dışa aktar"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-400/60 text-white text-xs font-black shadow-md transition-all active:scale-95 shrink-0"
-          >
-            <Download className="w-3.5 h-3.5 text-white" />
-            <span>ZIP İndir</span>
-          </a>
-
-          {/* Navigation Dropdown Menu (Available on all screens, primary on mobile/tablet) */}
+          {/* Açılır Menü (Dropdown Menu - Contains all screens, downloads, actions) */}
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-xl border text-xs sm:text-sm font-extrabold transition-all shadow-xs cursor-pointer ${
+              aria-label="Açılır Menü"
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl border text-xs sm:text-sm font-black transition-all shadow-xs cursor-pointer ${
                 dropdownOpen
                   ? 'bg-white text-[#0f4c81] border-white shadow-md'
                   : 'bg-white/15 hover:bg-white/25 border-white/25 text-white'
               }`}
             >
-              <Menu className="w-4 h-4" />
-              <span className="xl:hidden">{getScreenTitle()}</span>
+              <Menu className="w-4 h-4 shrink-0" />
+              <span>Menü</span>
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-              {redCount > 0 && (
-                <span className="xl:hidden w-2 h-2 rounded-full bg-red-400 animate-ping" />
-              )}
             </button>
 
             {/* Dropdown Panel */}
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-16px)] sm:w-80 max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 {/* User info banner */}
                 <div className="bg-slate-50 p-4 border-b border-slate-100">
                   <div className="flex items-center gap-3">

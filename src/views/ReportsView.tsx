@@ -270,11 +270,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const reportSpokenSummary = `Haftalık bakım raporu özeti: Bakımı yapan ${operatorName}. Dönem: ${periodType === 'bu' ? 'Bu hafta' : periodType}. Toplam planlanan bakım ${totalPlanned}, tamamlanan ${totalCompleted}, başarı oranı yüzde ${completionRate}. Uygun bulunan ${uygunCount}, arıza olarak işaretlenen ${redCount} kayıt bulunmaktadır.`;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5 print:p-0 print:space-y-4">
+    <div className="max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3.5 sm:space-y-5 print:p-0 print:space-y-4">
       {/* Top Action Bar */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4 print:hidden">
+      <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-[#0f2d4d]">
+          <h2 className="text-lg sm:text-2xl font-black text-[#0f2d4d]">
             Bakım Raporları & Analitik
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
@@ -282,28 +282,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
           <AudioPlayerButton
             text={reportSpokenSummary}
-            label="Raporu Seslendir"
+            label="Seslendir"
             size="sm"
           />
 
           <button
             type="button"
             onClick={handleExportCsv}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
           >
-            <Download className="w-4 h-4 text-emerald-700" />
-            <span>Excel'e İndir</span>
+            <Download className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Excel</span>
           </button>
 
           <button
             type="button"
             onClick={() => window.print()}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
           >
-            <Printer className="w-4 h-4 text-sky-700" />
+            <Printer className="w-3.5 h-3.5 text-sky-700" />
             <span>Yazdır</span>
           </button>
 
@@ -313,9 +313,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               setMailModalOpen(true);
               setMailResult(null);
             }}
-            className="px-4 py-2 bg-[#b11f2e] hover:bg-[#8f1824] text-white rounded-xl font-extrabold text-xs sm:text-sm transition-colors flex items-center gap-1.5 shadow-xs"
+            className="w-full sm:w-auto px-3.5 py-1.5 sm:py-2 bg-[#b11f2e] hover:bg-[#8f1824] text-white rounded-xl font-extrabold text-xs sm:text-sm transition-colors flex items-center justify-center gap-1.5 shadow-xs"
           >
-            <Mail className="w-4 h-4" />
+            <Mail className="w-3.5 h-3.5" />
             <span>PDF Mail Gönder</span>
           </button>
         </div>

@@ -56,37 +56,38 @@ export const RedListView: React.FC<RedListViewProps> = ({
   const affectedMachines = new Set(redRecords.map((r) => r.machineName)).size;
   const photoCount = redRecords.filter((r) => Boolean(r.proofImageUrl)).length;
 
+  const [pendingResolveRecord, setPendingResolveRecord] = useState<MaintenanceRecord | null>(null);
+
   // Handle Mark Resolved ("Giderildi")
   const handleMarkResolved = async (record: MaintenanceRecord) => {
-    if (
-      !confirm(
-        `${record.machineName}\n${record.recordId}\n\nArıza giderildi mi? Kayıt UYGUN olarak güncellenecektir.`
-      )
-    ) {
-      return;
-    }
+    setPendingResolveRecord(record);
+  };
 
-    setActionLoading(record.recordId);
+  const handleConfirmResolve = async () => {
+    if (!pendingResolveRecord) return;
+    const recId = pendingResolveRecord.recordId;
+    setPendingResolveRecord(null);
+    setActionLoading(recId);
     try {
-      await cmmsApi.markRecordResolved(record.recordId);
+      await cmmsApi.markRecordResolved(recId);
       onRecordUpdated();
     } catch (err: any) {
-      alert(`Güncellenemedi: ${err.message}`);
+      console.error('Update failed:', err);
     } finally {
       setActionLoading(null);
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+    <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 space-y-3.5 sm:space-y-5">
       {/* Header */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5" />
+          <div className="flex items-center gap-2 mb-0.5">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#0f2d4d]">
+            <h2 className="text-lg sm:text-2xl font-black text-[#0f2d4d]">
               RED Verilen Bakımlar
             </h2>
           </div>
@@ -99,21 +100,21 @@ export const RedListView: React.FC<RedListViewProps> = ({
         {redRecords.length > 0 && (
           <AudioPlayerButton
             text={`Açık arıza listesi: Şu anda seçili dönemde toplam ${redRecords.length} adet RED arıza kaydı bulunmaktadır. Etkilenen makine sayısı ${affectedMachines}.`}
-            label="Arıza Listesini Seslendir"
+            label="Seslendir"
             size="sm"
           />
         )}
       </div>
 
       {/* Filters Card */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-xs space-y-2.5 sm:space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Dönem</label>
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Dönem</label>
             <select
               value={periodFilter}
               onChange={(e) => setPeriodFilter(e.target.value as any)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+              className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
             >
               <option value="bu">Bu Hafta ({thisWeek})</option>
               <option value="gecen">Geçen Hafta ({lastWeek})</option>
@@ -122,11 +123,11 @@ export const RedListView: React.FC<RedListViewProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Makine</label>
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Makine</label>
             <select
               value={selectedMachine}
               onChange={(e) => setSelectedMachine(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+              className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
             >
               <option value="">Tüm Makineler</option>
               {machines.map((m) => (
@@ -138,47 +139,47 @@ export const RedListView: React.FC<RedListViewProps> = ({
           </div>
 
           <div className="sm:col-span-2 md:col-span-1">
-            <label className="block text-xs font-bold text-slate-600 mb-1">Metin Arama</label>
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Metin Arama</label>
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Açıklama, operatör veya parça..."
-                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
+                placeholder="Açıklama veya parça ara..."
+                className="w-full pl-8 pr-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f4c81]"
               />
-              <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             </div>
           </div>
         </div>
 
         {/* Counter KPI chips */}
-        <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100 text-xs font-bold">
-          <span className="px-3 py-1.5 rounded-lg bg-red-100 text-red-900 border border-red-200">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 text-[11px] sm:text-xs font-bold">
+          <span className="px-2.5 py-1 rounded-lg bg-red-100 text-red-900 border border-red-200">
             Açık RED: <b>{redRecords.length}</b>
           </span>
-          <span className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
-            Etkilenen Makine: <b>{affectedMachines}</b>
+          <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+            Etkilenen: <b>{affectedMachines} Makine</b>
           </span>
-          <span className="px-3 py-1.5 rounded-lg bg-sky-100 text-sky-900 border border-sky-200">
-            Fotoğraflı Kayıt: <b>{photoCount}</b>
+          <span className="px-2.5 py-1 rounded-lg bg-sky-100 text-sky-900 border border-sky-200">
+            Fotoğraflı: <b>{photoCount}</b>
           </span>
         </div>
       </div>
 
       {/* List of Red Records */}
       {redRecords.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center shadow-xs">
-          <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-3">
-            <CheckCircle2 className="w-8 h-8" />
+        <div className="bg-white p-8 sm:p-12 rounded-xl sm:rounded-2xl border border-slate-200 text-center shadow-xs">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-2.5">
+            <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
           </div>
-          <h3 className="text-lg font-black text-slate-800 mb-1">Açık Arıza Kaydı Yok</h3>
-          <p className="text-sm text-slate-500">
+          <h3 className="text-base sm:text-lg font-black text-slate-800 mb-1">Açık Arıza Kaydı Yok</h3>
+          <p className="text-xs sm:text-sm text-slate-500">
             Seçilen dönem ve filtre kriterlerine uygun RED verilen bakım bulunamadı. 👍
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {redRecords.map((r) => {
             const dateStr = new Date(r.createdAt).toLocaleString('tr-TR', {
               day: '2-digit',
@@ -191,32 +192,32 @@ export const RedListView: React.FC<RedListViewProps> = ({
             return (
               <article
                 key={r.recordId}
-                className="bg-white rounded-2xl border border-slate-200 border-l-6 border-l-red-500 p-5 shadow-xs hover:shadow-md transition-all space-y-3"
+                className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 border-l-4 sm:border-l-6 border-l-red-500 p-3.5 sm:p-5 shadow-xs hover:shadow-md transition-all space-y-2.5 sm:space-y-3 overflow-hidden"
               >
                 {/* Header row */}
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-[#FF9999] text-[#7a1414] font-black text-xs px-2.5 py-1 rounded-md">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="bg-[#FF9999] text-[#7a1414] font-black text-[11px] sm:text-xs px-2 py-0.5 rounded shrink-0">
                       RED
                     </span>
-                    <div>
-                      <h3 className="text-base sm:text-lg font-black text-[#0f2d4d]">
+                    <div className="min-w-0">
+                      <h3 className="text-sm sm:text-base font-black text-[#0f2d4d] break-words">
                         {r.machineName}
                       </h3>
-                      <div className="text-xs text-slate-400 font-semibold">{r.recordId}</div>
+                      <div className="text-[10px] sm:text-xs text-slate-400 font-semibold">{r.recordId}</div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
-                    <span className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
-                      <User className="w-3.5 h-3.5 text-slate-600" />
+                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 font-bold">
+                    <span className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
+                      <User className="w-3 h-3 text-slate-600" />
                       <span>{r.operator}</span>
                     </span>
-                    <span className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
-                      <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                    <span className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
+                      <Calendar className="w-3 h-3 text-slate-600" />
                       <span>{dateStr}</span>
                     </span>
-                    <span className="bg-sky-100 text-sky-800 px-2 py-1 rounded-md">
+                    <span className="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">
                       {r.weekKey}
                     </span>
                   </div>
@@ -285,6 +286,48 @@ export const RedListView: React.FC<RedListViewProps> = ({
               </article>
             );
           })}
+        </div>
+      )}
+
+      {/* In-App Resolve Confirmation Modal */}
+      {pendingResolveRecord && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-1">
+                Arıza Giderildi mi?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed font-semibold">
+                <b>{pendingResolveRecord.machineName}</b>
+                <br />
+                <span className="text-slate-400 font-mono text-[11px]">{pendingResolveRecord.recordId}</span>
+              </p>
+              <p className="text-xs text-slate-500 mt-2">
+                Bu arıza kaydı Google E-Tablo üzerinde <b>UYGUN</b> olarak güncellenecektir.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmResolve}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-sm shadow-md transition-colors"
+              >
+                Evet, Giderildi
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingResolveRecord(null)}
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
