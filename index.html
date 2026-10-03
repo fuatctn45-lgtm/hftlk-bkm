@@ -13,10 +13,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/index.css" onerror="this.onerror=null;">
   </head>
   <body class="bg-slate-100 text-slate-800 antialiased selection:bg-sky-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      // GitHub Pages Otomatik Kurtarma (Beyaz Ekran Engelleyici)
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && (!root.children || root.children.length === 0)) {
+          console.warn('[AKG CMMS] Statik GitHub Pages ortamı algılandı. Üretim paketi yükleniyor...');
+          const s = document.createElement('script');
+          s.type = 'module';
+          s.crossOrigin = 'anonymous';
+          s.src = './assets/index.js';
+          document.body.appendChild(s);
+        }
+      }, 400);
+    </script>
   </body>
 </html>
 
