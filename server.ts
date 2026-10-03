@@ -34,7 +34,7 @@ const ai = new GoogleGenAI({
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    version: 'V5.4.42',
+    version: 'V5.5.0',
     timestamp: new Date().toISOString(),
     hasApiKey: Boolean(apiKey),
   });
@@ -426,7 +426,7 @@ app.all('/api/cmms/proxy', async (req, res) => {
  */
 app.get('/api/export-project-zip', (req, res) => {
   const timestamp = new Date().toISOString().split('T')[0];
-  const zipPath = path.resolve(os.tmpdir(), `AKG_CMMS_V5.4.42_Source_${Date.now()}.zip`);
+  const zipPath = path.resolve(os.tmpdir(), `AKG_CMMS_V5.5.0_Source_${Date.now()}.zip`);
   const scriptPath = path.resolve(process.cwd(), 'scripts/export_zip.py');
 
   exec(`python3 "${scriptPath}" "${zipPath}"`, { cwd: process.cwd() }, (err, stdout) => {
@@ -435,7 +435,32 @@ app.get('/api/export-project-zip', (req, res) => {
       return res.status(500).json({ error: 'Zip oluşturulamadı' });
     }
 
-    res.download(zipPath, `AKG_CMMS_V5.4.42_Source_${timestamp}.zip`, () => {
+    res.download(zipPath, `AKG_CMMS_V5.5.0_Source_${timestamp}.zip`, () => {
+      try {
+        if (fs.existsSync(zipPath)) {
+          fs.unlinkSync(zipPath);
+        }
+      } catch {}
+    });
+  });
+});
+
+/**
+ * Export pre-compiled dist files ready for 1-click GitHub Pages upload
+ */
+app.get('/api/export-github-pages-zip', (req, res) => {
+  const zipPath = path.resolve(os.tmpdir(), `GITHUB_PAGES_YUKLE_V5.5.0_${Date.now()}.zip`);
+  const distDir = path.resolve(process.cwd(), 'dist');
+
+  // Zip the contents of dist/ directly using python3
+  const pyCode = `import zipfile, os, sys; out = sys.argv[1]; d = sys.argv[2]; z = zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED); [(z.write(os.path.join(r, f), os.path.relpath(os.path.join(r, f), d))) for r, dirs, files in os.walk(d) for f in files]; z.close()`;
+  exec(`python3 -c "${pyCode}" "${zipPath}" "${distDir}"`, (err) => {
+    if (err || !fs.existsSync(zipPath)) {
+      console.error('GitHub Pages zip error:', err);
+      return res.status(500).json({ error: 'GitHub Pages zip oluşturulamadı' });
+    }
+
+    res.download(zipPath, `GITHUB_PAGES_YUKLE_V5.5.0.zip`, () => {
       try {
         if (fs.existsSync(zipPath)) {
           fs.unlinkSync(zipPath);

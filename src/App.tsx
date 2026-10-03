@@ -199,7 +199,7 @@ export default function App() {
             <span>{records.length} Kayıt</span>
             {lastSyncTime && <span>(Son senkron: {lastSyncTime})</span>}
           </div>
-          <span>AKG Endüstriyel Soğutma Sistemleri • Haftalık Bakım CMMS V5.4.42</span>
+          <span>AKG Endüstriyel Soğutma Sistemleri • Haftalık Bakım CMMS V5.5.0</span>
         </div>
       </footer>
 

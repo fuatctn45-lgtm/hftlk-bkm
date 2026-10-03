@@ -4,7 +4,7 @@ import zipfile
 
 def create_project_zip(output_path):
     src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ignore_dirs = {'node_modules', 'dist', '.git', '.cache', '.npm'}
+    ignore_dirs = {'node_modules', '.git', '.cache', '.npm', '.master_backup'}
     ignore_extensions = {'.log', '.tmp'}
 
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
