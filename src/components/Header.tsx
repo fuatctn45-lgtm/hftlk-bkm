@@ -130,23 +130,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Left: Brand Identity & Active Operator */}
         <div
           onClick={() => handleSelectNav('operator')}
-          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group select-none min-w-0"
+          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group select-none shrink-0"
         >
           <div className="bg-yellow-400 text-black rounded-lg px-1.5 py-0.5 shadow-xs group-hover:scale-102 transition-transform shrink-0 border border-yellow-300 flex items-center justify-center">
             <AkgLogo size="xs" />
           </div>
-          <div className="min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs sm:text-sm font-black tracking-tight leading-none text-yellow-400">
-                AKG CMMS
-              </span>
-              <span className="hidden xs:inline-block px-1 py-0.2 rounded text-[9px] font-mono font-black bg-yellow-400 text-black leading-none">
-                V5.5.0
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-300 mt-0.5">
+          <div className="flex flex-col justify-center">
+            <span className="text-sm sm:text-base font-black tracking-tight leading-none text-yellow-400">
+              AKG CMMS
+            </span>
+            {/* Operator name on tablet/desktop */}
+            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-300 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
-              <span className="font-semibold truncate max-w-[95px] xs:max-w-[130px] sm:max-w-xs text-slate-200">
+              <span className="font-semibold text-slate-200">
                 {operatorName}
               </span>
               {isAdmin && (
@@ -166,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={() => handleSelectNav('redList')}
               title={`${redCount} açık arıza kaydı var`}
-              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[11px] sm:text-xs font-black transition-all shadow-md active:scale-95 cursor-pointer animate-pulse"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[11px] sm:text-xs font-black transition-all shadow-md active:scale-95 cursor-pointer animate-pulse"
             >
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               <span>{redCount} RED</span>
@@ -192,15 +188,15 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={() => setDropdownOpen(!dropdownOpen)}
               aria-label="Açılır Menü"
-              className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md cursor-pointer active:scale-95 ${
+              className={`inline-flex items-center justify-center h-8 sm:h-9 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md cursor-pointer active:scale-95 gap-1.5 ${
                 dropdownOpen
                   ? 'bg-yellow-300 text-black ring-2 ring-yellow-400'
                   : 'bg-yellow-400 hover:bg-yellow-300 text-black shadow-yellow-500/20'
               }`}
             >
               <Menu className="w-4 h-4 shrink-0 text-black" />
-              <span className="hidden xs:inline">Menü</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-black transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+              <span className="hidden sm:inline">Menü</span>
+              <ChevronDown className={`hidden sm:inline-block w-3.5 h-3.5 text-black transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Panel Sheet */}

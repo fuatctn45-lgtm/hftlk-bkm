@@ -888,7 +888,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                   <div className="min-w-0 w-full mb-3">
                     {/* Header: Machine Name & Cost Center Code */}
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-sm sm:text-base font-black text-white group-hover:text-yellow-400 transition-colors break-words line-clamp-2">
+                      <h3 className="text-sm sm:text-base font-black text-yellow-400 group-hover:text-yellow-300 transition-colors break-words line-clamp-2">
                         {m.machineName}
                       </h3>
                       <span className="text-[10px] sm:text-[11px] font-mono font-bold bg-yellow-400/10 text-yellow-400 px-2 py-0.5 rounded-lg shrink-0 border border-yellow-400/30">
@@ -1107,7 +1107,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider block">
                 {selectedMachine?.costCenter || selectedMachine?.code || 'Makine'}
               </span>
-              <h2 className="text-lg sm:text-2xl font-black text-white break-words">
+              <h2 className="text-lg sm:text-2xl font-black text-yellow-400 break-words">
                 {selectedMachine?.machineName}
               </h2>
             </div>

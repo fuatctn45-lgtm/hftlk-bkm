@@ -358,7 +358,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
                       RED
                     </span>
                     <div className="min-w-0">
-                      <h3 className="text-sm sm:text-base font-black text-white break-words">
+                      <h3 className="text-sm sm:text-base font-black text-yellow-400 break-words">
                         {r.machineName}
                       </h3>
                       <div className="text-[11px] font-mono text-slate-400 font-semibold">{r.recordId}</div>

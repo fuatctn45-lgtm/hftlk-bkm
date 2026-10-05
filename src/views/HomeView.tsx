@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { UserSession, Machine, MaintenanceTemplate, MaintenanceRecord } from '../types/cmms';
 import { getWeekKey } from '../services/cmmsApi';
-import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import {
   Wrench,
   AlertTriangle,
@@ -49,9 +48,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const pendingCount = Math.max(0, totalPlanned - completed);
   const completionRate = totalPlanned > 0 ? Math.round((completed / totalPlanned) * 100) : 0;
 
-  // Spoken summary for TTS
-  const spokenBriefing = `Merhaba ${operatorName}. AKG Haftalık Bakım Yönetim Sistemi'ne hoş geldiniz. ${currentWeek} dönemi için ${totalPlanned} kontrol maddesi planlanmıştır. Şu ana kadar ${completed} bakım tamamlandı. Başarı oranı yüzde ${completionRate}. Sistemde ${redCount} adet aktif kırmızı arıza bulunmaktadır.`;
-
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4 sm:space-y-6">
       {/* Industrial Hero Command Banner (Sarı - Siyah Konsept) */}
@@ -61,36 +57,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <span className="px-2.5 py-0.5 bg-yellow-400/20 text-yellow-300 rounded-md text-[11px] sm:text-xs font-mono font-black border border-yellow-400/40">
               Dönem: {currentWeek}
             </span>
-            <span className="px-2.5 py-0.5 bg-yellow-400 text-black rounded-md text-[11px] sm:text-xs font-black flex items-center gap-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-              <span>AKG V5.5.0</span>
-            </span>
           </div>
 
-          <h2 className="text-xl sm:text-3xl font-black tracking-tight mb-1.5 sm:mb-2 text-white">
+          <h2 className="text-xl sm:text-3xl font-black tracking-tight mb-4 text-white">
             Hoş Geldiniz, <span className="text-yellow-400">{operatorName}</span>
           </h2>
-          <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-4 sm:mb-6 font-normal max-w-2xl">
-            AKG Endüstriyel Soğutma Sistemleri haftalık koruyucu bakım kontrollerinizi tamamlayabilir,
-            arızaları fotoğraflarla raporlayabilir ve anlık analiz raporlarını inceleyebilirsiniz.
-          </p>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => onNavigate('operator')}
-              className="px-4 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
             >
               <Wrench className="w-4 h-4 text-black" />
               <span>Hemen Bakıma Başla</span>
             </button>
-
-            <AudioPlayerButton
-              text={spokenBriefing}
-              label="Bakım Özetini Dinle"
-              size="sm"
-              className="bg-[#0b0f17] hover:bg-black text-yellow-400 border-yellow-500/40 shadow-md text-xs sm:text-sm font-bold"
-            />
           </div>
         </div>
 
