@@ -51,7 +51,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4 sm:space-y-6">
       {/* Industrial Hero Command Banner (Sarı - Siyah Konsept) */}
-      <div className="bg-gradient-to-br from-black via-[#10141e] to-[#182030] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden border border-yellow-500/40">
+      <div className="bg-gradient-to-br from-[#1c283e] via-[#162133] to-[#22334e] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden border border-yellow-500/40">
         <div className="relative z-10 max-w-3xl">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
             <span className="px-2.5 py-0.5 bg-yellow-400/20 text-yellow-300 rounded-md text-[11px] sm:text-xs font-mono font-black border border-yellow-400/40">
@@ -83,7 +83,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* KPI Stats Cards (Sarı - Siyah) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
         {/* Planned */}
-        <div className="bg-[#121824] p-3.5 sm:p-4 rounded-2xl border border-slate-800 hover:border-yellow-500/50 shadow-md transition-all">
+        <div className="bg-[#1b263b] p-3.5 sm:p-4 rounded-2xl border border-slate-700/70 hover:border-yellow-500/50 shadow-md transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Planlanan</span>
             <Clock className="w-4 h-4 text-yellow-400" />
@@ -93,7 +93,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Completed */}
-        <div className="bg-[#121824] p-3.5 sm:p-4 rounded-2xl border border-slate-800 hover:border-yellow-500/50 shadow-md transition-all">
+        <div className="bg-[#1b263b] p-3.5 sm:p-4 rounded-2xl border border-slate-700/70 hover:border-yellow-500/50 shadow-md transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-400">Tamamlanan</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -103,7 +103,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Pending */}
-        <div className="bg-[#121824] p-3.5 sm:p-4 rounded-2xl border border-slate-800 hover:border-yellow-500/50 shadow-md transition-all">
+        <div className="bg-[#1b263b] p-3.5 sm:p-4 rounded-2xl border border-slate-700/70 hover:border-yellow-500/50 shadow-md transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-400">Bekleyen</span>
             <Clock className="w-4 h-4 text-amber-400" />
@@ -113,7 +113,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* UYGUN */}
-        <div className="bg-[#121824] p-3.5 sm:p-4 rounded-2xl border border-slate-800 hover:border-yellow-500/50 shadow-md transition-all">
+        <div className="bg-[#1b263b] p-3.5 sm:p-4 rounded-2xl border border-slate-700/70 hover:border-yellow-500/50 shadow-md transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-300">UYGUN</span>
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
@@ -123,7 +123,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* RED Arıza */}
-        <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-md transition-all ${redCount > 0 ? 'bg-rose-950/40 border-rose-600/70' : 'bg-[#121824] border-slate-800'}`}>
+        <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-md transition-all ${redCount > 0 ? 'bg-rose-950/40 border-rose-600/70' : 'bg-[#1b263b] border-slate-700/70'}`}>
           <div className="flex items-center justify-between text-rose-400 mb-1">
             <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">RED Arıza</span>
             <AlertTriangle className={`w-4 h-4 ${redCount > 0 ? 'text-rose-400 animate-pulse' : 'text-slate-500'}`} />
@@ -133,7 +133,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Progress % */}
-        <div className="bg-[#121824] p-3.5 sm:p-4 rounded-2xl border border-slate-800 hover:border-yellow-500/50 shadow-md transition-all">
+        <div className="bg-[#1b263b] p-3.5 sm:p-4 rounded-2xl border border-slate-700/70 hover:border-yellow-500/50 shadow-md transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-yellow-400">İlerleme</span>
             <TrendingUp className="w-4 h-4 text-yellow-400" />
@@ -155,7 +155,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Tile 1: Operator Panel */}
         <div
           onClick={() => onNavigate('operator')}
-          className="group bg-[#121824] rounded-2xl p-5 sm:p-6 border border-slate-800 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
+          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="w-11 h-11 rounded-2xl bg-yellow-400 text-black flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform shadow-md shadow-yellow-500/20">
@@ -168,7 +168,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               Makineleri seçin, QR kodlarını okutun ve birimlere göre renklendirilmiş haftalık kontrol adımlarını gerçekleştirin.
             </p>
           </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-800 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
+          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
             <span>Kontrole Başla ({machines.length} Makine)</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -177,7 +177,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Tile 2: RED List */}
         <div
           onClick={() => onNavigate('redList')}
-          className="group bg-[#121824] rounded-2xl p-5 sm:p-6 border border-slate-800 hover:border-rose-500 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
+          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-rose-500 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="w-11 h-11 rounded-2xl bg-rose-950/80 text-rose-400 border border-rose-800/50 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform relative">
@@ -195,7 +195,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               Operatörlerin uygun bulmadığı kritik arıza kayıtları, fotoğraflı kanıtlar ve "Giderildi" aksiyon takibi.
             </p>
           </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-800 flex items-center justify-between text-rose-400 font-bold text-xs sm:text-sm">
+          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-rose-400 font-bold text-xs sm:text-sm">
             <span>{redCount > 0 ? `${redCount} Açık Arıza Mevcut` : 'Arızaları İncele'}</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -204,7 +204,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Tile 3: Reports */}
         <div
           onClick={() => onNavigate('reports')}
-          className="group bg-[#121824] rounded-2xl p-5 sm:p-6 border border-slate-800 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
+          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="w-11 h-11 rounded-2xl bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
@@ -217,7 +217,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               Makine ve birim bazında detaylı istatistikler, Excel (CSV) dışa aktarımı, yazdırma ve tek tıkla PDF e-posta gönderimi.
             </p>
           </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-800 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
+          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
             <span>Raporları İncele</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -226,7 +226,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Tile 4: AI Technical Assistant */}
         <div
           onClick={() => onNavigate('aiSearch')}
-          className="group bg-[#121824] rounded-2xl p-5 sm:p-6 border border-slate-800 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
+          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
         >
           <div>
             <div className="w-11 h-11 rounded-2xl bg-yellow-400/20 text-yellow-400 border border-yellow-400/40 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform shadow-xs">
@@ -244,7 +244,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               Gemini ve canlı Google Arama ile radyatör montajı, arıza kodları, hidrolik değerler ve ISO standartlarını teknik danışmana sorun.
             </p>
           </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-800 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
+          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
             <span>Teknik Kılavuza Sor</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -254,7 +254,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {isAdmin && (
           <div
             onClick={() => onNavigate('admin')}
-            className="group bg-[#121824] rounded-2xl p-5 sm:p-6 border border-slate-800 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
+            className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
           >
             <div>
               <div className="w-11 h-11 rounded-2xl bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
@@ -267,7 +267,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 Makinelere yeni kontrol maddeleri ekleyin, birim renklerini düzenleyin, fotoğraf zorunluluğu koyun ve şablonları yönetin.
               </p>
             </div>
-            <div className="mt-4 pt-3.5 border-t border-slate-800 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
+            <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
               <span>Tanımları Yönet ({templates.length} Madde)</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>

@@ -77,10 +77,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-[88vh] flex items-center justify-center p-3 sm:p-4 bg-[#0b0f17]">
-      <div className="w-full max-w-md bg-[#121824] rounded-3xl shadow-2xl border border-yellow-500/30 overflow-hidden">
+    <div className="min-h-[88vh] flex items-center justify-center p-3 sm:p-4 bg-[#131d2e]">
+      <div className="w-full max-w-md bg-[#1b263b] rounded-3xl shadow-2xl border border-yellow-500/30 overflow-hidden">
         {/* Card Header (Sarı-Siyah) */}
-        <div className="bg-black p-6 sm:p-7 text-white text-center flex flex-col items-center relative overflow-hidden border-b-2 border-yellow-400">
+        <div className="bg-[#152033] p-6 sm:p-7 text-white text-center flex flex-col items-center relative overflow-hidden border-b-2 border-yellow-400">
           <div className="bg-yellow-400 text-black rounded-2xl p-3 shadow-lg shadow-yellow-500/20 mb-3 border border-yellow-300">
             <AkgLogo size="md" />
           </div>
@@ -95,7 +95,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </p>
 
           {/* Live Google E-Tablo Connection Indicator */}
-          <div className="mt-3.5 inline-flex items-center gap-2 px-3 py-1 bg-[#161d2b] rounded-full text-xs font-bold text-yellow-400 border border-yellow-500/30 shadow-xs">
+          <div className="mt-3.5 inline-flex items-center gap-2 px-3 py-1 bg-[#1a2538] rounded-full text-xs font-bold text-yellow-400 border border-yellow-500/30 shadow-xs">
             <span className={`w-2 h-2 rounded-full ${sheetStatus?.connected ? 'bg-yellow-400 animate-pulse' : 'bg-amber-500'}`} />
             <span className="text-[11px] text-slate-200">
               Google E-Tablo:{' '}
@@ -140,7 +140,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Şifrenizi girin..."
                   autoFocus
-                  className="w-full pl-10 pr-11 py-3 bg-[#0b0f17] border border-slate-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition-all text-white placeholder:text-slate-500"
+                  className="w-full pl-10 pr-11 py-3 bg-[#141d2d] border border-slate-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition-all text-white placeholder:text-slate-500"
                 />
                 <KeyRound className="w-4 h-4 text-yellow-400 absolute left-3.5 top-3.5" />
                 <button
@@ -161,14 +161,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
             {/* Mobile-Friendly Numeric Keypad (Sarı-Siyah) */}
             {showKeypad && (
-              <div className="bg-[#0b0f17] p-2.5 rounded-2xl border border-slate-800 space-y-1.5 animate-in fade-in duration-150">
+              <div className="bg-[#141d2d] p-2.5 rounded-2xl border border-slate-700/80 space-y-1.5 animate-in fade-in duration-150">
                 <div className="grid grid-cols-3 gap-1.5">
                   {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                     <button
                       key={digit}
                       type="button"
                       onClick={() => handleKeypadPress(digit)}
-                      className="py-2.5 bg-[#18202e] hover:bg-yellow-400 hover:text-black border border-slate-700 rounded-xl text-base font-black text-yellow-400 active:scale-95 transition-all cursor-pointer"
+                      className="py-2.5 bg-[#1e2a3f] hover:bg-yellow-400 hover:text-black border border-slate-700 rounded-xl text-base font-black text-yellow-400 active:scale-95 transition-all cursor-pointer"
                     >
                       {digit}
                     </button>
@@ -183,7 +183,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   <button
                     type="button"
                     onClick={() => handleKeypadPress('0')}
-                    className="py-2.5 bg-[#18202e] hover:bg-yellow-400 hover:text-black border border-slate-700 rounded-xl text-base font-black text-yellow-400 active:scale-95 transition-all cursor-pointer"
+                    className="py-2.5 bg-[#1e2a3f] hover:bg-yellow-400 hover:text-black border border-slate-700 rounded-xl text-base font-black text-yellow-400 active:scale-95 transition-all cursor-pointer"
                   >
                     0
                   </button>

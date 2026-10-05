@@ -689,7 +689,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // Modern Sarı-Siyah Step Breadcrumbs Navigation Bar
   const renderBreadcrumbBar = () => {
     return (
-      <div className="bg-[#121824] rounded-2xl border border-yellow-500/30 p-2.5 sm:p-3 shadow-md flex items-center justify-between gap-2 overflow-x-auto select-none">
+      <div className="bg-[#1b263b] rounded-2xl border border-yellow-500/30 p-2.5 sm:p-3 shadow-md flex items-center justify-between gap-2 overflow-x-auto select-none">
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-bold text-slate-300 shrink-0">
           <button
             type="button"
@@ -751,7 +751,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         {renderBreadcrumbBar()}
 
         {/* Search & Segmented Filter Bar */}
-        <div className="bg-[#121824] p-3.5 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
+        <div className="bg-[#1b263b] p-3.5 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
@@ -766,7 +766,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             </div>
 
             {/* Segmented Filter Control */}
-            <div className="flex items-center bg-[#0b0f17] p-1 rounded-xl text-xs font-bold w-full sm:w-auto overflow-x-auto border border-slate-800">
+            <div className="flex items-center bg-[#141d2d] p-1 rounded-xl text-xs font-bold w-full sm:w-auto overflow-x-auto border border-slate-800">
               <button
                 type="button"
                 onClick={() => setMachineStatusFilter('all')}
@@ -822,7 +822,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Makine adı veya masraf merkezi ara..."
-              className="w-full pl-10 pr-9 py-2.5 bg-[#0b0f17] border border-slate-700 rounded-xl text-sm font-semibold text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+              className="w-full pl-10 pr-9 py-2.5 bg-[#141d2d] border border-slate-700 rounded-xl text-sm font-semibold text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
             />
             {searchQuery && (
               <button
@@ -860,7 +860,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
         {/* Machine Cards Grid */}
         {filteredMachines.length === 0 ? (
-          <div className="bg-[#121824] p-10 rounded-2xl border border-slate-800 text-center shadow-md space-y-3">
+          <div className="bg-[#1b263b] p-10 rounded-2xl border border-slate-800 text-center shadow-md space-y-3">
             <div className="w-12 h-12 rounded-full bg-slate-800 text-yellow-400 flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
@@ -893,7 +893,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                 <div
                   key={m.id}
                   onClick={() => handleSelectMachine(m)}
-                  className={`group bg-[#121824] p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-md flex flex-col justify-between active:scale-[0.98] ${
+                  className={`group bg-[#1b263b] p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-md flex flex-col justify-between active:scale-[0.98] ${
                     hasRed
                       ? 'border-rose-500/70 hover:border-rose-400'
                       : isAllDone
@@ -981,7 +981,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       <div className="max-w-md mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4">
         {renderBreadcrumbBar()}
 
-        <div className="bg-[#121824] rounded-2xl border border-yellow-500/30 shadow-xl p-5 text-center space-y-4">
+        <div className="bg-[#1b263b] rounded-2xl border border-yellow-500/30 shadow-xl p-5 text-center space-y-4">
           <div className="inline-flex p-3 rounded-2xl bg-yellow-400 text-black border border-yellow-300 shadow-md shadow-yellow-500/20">
             <QrCode className="w-8 h-8" />
           </div>
@@ -993,7 +993,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             </p>
           </div>
 
-          <div className="bg-[#0b0f17] border border-yellow-500/30 p-3 rounded-xl text-left text-xs space-y-1">
+          <div className="bg-[#141d2d] border border-yellow-500/30 p-3 rounded-xl text-left text-xs space-y-1">
             <div className="text-yellow-400 font-extrabold text-sm">{selectedMachine?.machineName}</div>
             <div className="text-slate-400 font-mono text-[11px]">
               Etiket / Kod: {selectedMachine?.costCenter || selectedMachine?.code || selectedMachine?.id}
@@ -1066,7 +1066,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         {/* Wrong QR Modal */}
         {wrongQrModal && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-[#121824] rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-rose-500/50 space-y-3 animate-in zoom-in-95">
+            <div className="bg-[#1b263b] rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-rose-500/50 space-y-3 animate-in zoom-in-95">
               <div className="w-12 h-12 bg-rose-950 text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-600/40">
                 <AlertTriangle className="w-6 h-6" />
               </div>
@@ -1117,7 +1117,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         {renderBreadcrumbBar()}
 
         {/* Machine Header Card */}
-        <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-2">
+        <div className="bg-[#1b263b] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider block">
@@ -1144,10 +1144,10 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         </div>
 
         {/* Department Colors Legend */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 bg-[#0e131d] p-3 rounded-xl border border-slate-800 text-[11px] font-semibold text-slate-300">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 bg-[#162030] p-3 rounded-xl border border-slate-800 text-[11px] font-semibold text-slate-300">
           <span className="text-yellow-400 font-black mr-1">Birimler:</span>
           {DEPARTMENTS.map((d) => (
-            <span key={d.kod} className="flex items-center gap-1 bg-[#161d2b] px-2 py-0.5 rounded-lg border border-slate-700">
+            <span key={d.kod} className="flex items-center gap-1 bg-[#1a2538] px-2 py-0.5 rounded-lg border border-slate-700">
               <span className={`w-2.5 h-2.5 rounded-sm ${d.bgClass} border border-black/20`} />
               <span>{d.ad}</span>
             </span>
@@ -1277,7 +1277,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       {renderBreadcrumbBar()}
 
       {/* Control Header Card */}
-      <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
+      <div className="bg-[#1b263b] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-3">
         <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
           <div className="min-w-0">
             <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider block truncate">
@@ -1346,11 +1346,11 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <span className={`w-1.5 h-1.5 rounded-full ${deptStyle.dotColor}`} />
               <span>Birim: {dept?.ad || selectedTask?.system || 'Genel'}</span>
             </span>
-            <span className="font-bold bg-[#141b27] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700">
+            <span className="font-bold bg-[#192437] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700">
               Bölge: {selectedTask?.region || '-'}
             </span>
             {selectedTask?.part && (
-              <span className="font-bold bg-[#141b27] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700">
+              <span className="font-bold bg-[#192437] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700">
                 Parça: {selectedTask?.part}
               </span>
             )}
@@ -1370,7 +1370,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         className={`p-4 sm:p-5 rounded-2xl border shadow-md space-y-4 transition-all duration-200 ${
           isRed
             ? 'bg-rose-950/40 border-rose-600/50 shadow-rose-950/40'
-            : 'bg-[#121824] border-slate-800'
+            : 'bg-[#1b263b] border-slate-800'
         }`}
       >
         {/* Measured Value Input */}
@@ -1390,7 +1390,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               value={measuredValue}
               onChange={(e) => setMeasuredValue(e.target.value)}
               placeholder="Ör: 4.8 bar / 48°C / 8.2mm"
-              className={`w-full px-3 py-2.5 bg-[#0b0f17] border rounded-xl text-base font-bold text-white focus:outline-none focus:ring-2 ${deptStyle.inputBorder} ${deptStyle.inputFocusRing}`}
+              className={`w-full px-3 py-2.5 bg-[#141d2d] border rounded-xl text-base font-bold text-white focus:outline-none focus:ring-2 ${deptStyle.inputBorder} ${deptStyle.inputFocusRing}`}
             />
           </div>
         )}
@@ -1407,7 +1407,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               className={`py-3.5 px-3 sm:px-5 rounded-2xl font-black text-base border-2 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 ${
                 result === 'UYGUN'
                   ? 'bg-emerald-500 border-emerald-400 text-black shadow-lg ring-4 ring-emerald-500/20'
-                  : 'bg-[#0b0f17] border-slate-700 text-slate-300 hover:border-emerald-500 hover:text-white'
+                  : 'bg-[#141d2d] border-slate-700 text-slate-300 hover:border-emerald-500 hover:text-white'
               }`}
             >
               <CheckCircle2 className={`w-5 h-5 ${result === 'UYGUN' ? 'text-black' : 'text-emerald-400'}`} />
@@ -1420,7 +1420,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               className={`py-3.5 px-3 sm:px-5 rounded-2xl font-black text-base border-2 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 ${
                 result === 'RED'
                   ? 'bg-rose-600 border-rose-500 text-white shadow-lg ring-4 ring-rose-500/20 animate-pulse'
-                  : 'bg-[#0b0f17] border-slate-700 text-slate-300 hover:border-rose-500 hover:text-white'
+                  : 'bg-[#141d2d] border-slate-700 text-slate-300 hover:border-rose-500 hover:text-white'
               }`}
             >
               <AlertTriangle className={`w-5 h-5 ${result === 'RED' ? 'text-white' : 'text-rose-400'}`} />
@@ -1449,7 +1449,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                 ? 'Arızanın tanımı nedir? Hangi parçada hasar var? (En az 10 karakter)...'
                 : 'Açıklama veya ilave notlar (isteğe bağlı)...'
             }
-            className={`w-full px-3.5 py-2.5 bg-[#0b0f17] border rounded-xl text-base sm:text-sm font-medium focus:outline-none transition-all text-white ${
+            className={`w-full px-3.5 py-2.5 bg-[#141d2d] border rounded-xl text-base sm:text-sm font-medium focus:outline-none transition-all text-white ${
               isRed && descLength < 10
                 ? 'border-rose-500 focus:ring-2 focus:ring-rose-500'
                 : 'border-slate-700 focus:ring-2 focus:ring-yellow-400'
@@ -1476,7 +1476,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               ? 'bg-rose-950/20 border-rose-500/70'
               : proofImage
               ? 'bg-emerald-950/20 border-emerald-500/70'
-              : 'bg-[#0b0f17] border-slate-800'
+              : 'bg-[#141d2d] border-slate-800'
           }`}
         >
           <div className="flex items-center justify-between mb-2.5">
@@ -1519,7 +1519,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             </label>
 
             {proofImage && (
-              <div className="flex items-center gap-3 w-full sm:w-auto bg-[#0b0f17] p-2 rounded-xl border border-slate-700 shadow-2xs">
+              <div className="flex items-center gap-3 w-full sm:w-auto bg-[#141d2d] p-2 rounded-xl border border-slate-700 shadow-2xs">
                 <img
                   src={proofImage}
                   alt="Önizleme"
@@ -1560,7 +1560,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
               {/* Inspection Results Box */}
               {aiAnalysisResult && (
-                <div className="mt-3 p-3 bg-[#0b0f17] border border-yellow-500/40 rounded-xl text-xs text-slate-100 space-y-2">
+                <div className="mt-3 p-3 bg-[#141d2d] border border-yellow-500/40 rounded-xl text-xs text-slate-100 space-y-2">
                   <div className="flex items-center justify-between font-black text-yellow-400 border-b border-yellow-500/20 pb-1.5">
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4 text-yellow-400" />

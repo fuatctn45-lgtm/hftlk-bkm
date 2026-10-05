@@ -150,8 +150,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0b0f17] flex items-center justify-center p-4">
-        <div className="text-center space-y-3 bg-[#121824] p-8 rounded-3xl shadow-2xl border border-yellow-500/30 max-w-sm w-full">
+      <div className="min-h-screen bg-[#131d2e] flex items-center justify-center p-4">
+        <div className="text-center space-y-3 bg-[#1b263b] p-8 rounded-3xl shadow-2xl border border-yellow-500/30 max-w-sm w-full">
           <Loader2 className="w-10 h-10 animate-spin text-yellow-400 mx-auto" />
           <div className="text-base font-black text-white">
             Google E-Tabloya Bağlanılıyor...
@@ -167,7 +167,7 @@ export default function App() {
   // Not logged in: Show Login Screen
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0b0f17]">
+      <div className="min-h-screen bg-[#131d2e]">
         <LoginView onLoginSuccess={handleLoginSuccess} />
       </div>
     );
@@ -175,7 +175,7 @@ export default function App() {
 
   // Logged in: Render Full Application with Responsive Header
   return (
-    <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#131d2e] text-slate-100 flex flex-col font-sans">
       <Header
         currentScreen={currentScreen}
         onNavigate={setCurrentScreen}
@@ -248,7 +248,7 @@ export default function App() {
       </main>
 
       {/* Corporate Footer with live E-Tablo status */}
-      <footer className="bg-[#080b11] border-t border-yellow-500/20 py-2.5 sm:py-3 px-3 sm:px-4 text-center text-[11px] sm:text-xs text-slate-400 font-medium print:hidden">
+      <footer className="bg-[#101726] border-t border-yellow-500/20 py-2.5 sm:py-3 px-3 sm:px-4 text-center text-[11px] sm:text-xs text-slate-400 font-medium print:hidden">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2">
           <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
             <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse inline-block shrink-0" />
@@ -266,7 +266,7 @@ export default function App() {
       {/* IN-APP LOGOUT CONFIRMATION MODAL (Does not depend on window.confirm) */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-[#121824] rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-yellow-500/30 space-y-4 animate-in zoom-in-95">
+          <div className="bg-[#1b263b] rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-yellow-500/30 space-y-4 animate-in zoom-in-95">
             <div className="w-14 h-14 bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 rounded-full flex items-center justify-center mx-auto">
               <LogOut className="w-7 h-7" />
             </div>

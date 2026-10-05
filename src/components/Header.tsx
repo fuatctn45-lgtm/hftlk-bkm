@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#080b11] text-white shadow-xl border-b border-yellow-500/30 backdrop-blur-md print:hidden">
+    <header className="sticky top-0 z-50 bg-[#152033]/95 text-white shadow-xl border-b border-yellow-500/30 backdrop-blur-md print:hidden">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand Identity & Active Operator */}
         <div
@@ -221,9 +221,9 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Dropdown Panel Sheet */}
             {dropdownOpen && (
-              <div className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-16px)] sm:w-88 max-w-sm bg-[#101520] rounded-2xl shadow-2xl border border-yellow-500/40 overflow-hidden text-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-16px)] sm:w-88 max-w-sm bg-[#1b263b] rounded-2xl shadow-2xl border border-yellow-500/40 overflow-hidden text-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 {/* User info banner */}
-                <div className="bg-black text-white p-4 border-b border-yellow-500/20">
+                <div className="bg-[#141d2c] text-white p-4 border-b border-yellow-500/20">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2.5">
                       <div className="w-9 h-9 rounded-xl bg-yellow-400 text-black flex items-center justify-center font-black text-sm shrink-0 shadow-md">
@@ -249,12 +249,12 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-800 text-[11px]">
-                    <div className="bg-[#18202e] rounded-lg px-2.5 py-1.5 border border-slate-800">
+                  <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-700/80 text-[11px]">
+                    <div className="bg-[#192437] rounded-lg px-2.5 py-1.5 border border-slate-700/70">
                       <span className="text-slate-400 block text-[10px]">Bakımlı Makineler</span>
                       <span className="font-black text-yellow-400 text-xs">{machinesCount} Adet</span>
                     </div>
-                    <div className="bg-[#18202e] rounded-lg px-2.5 py-1.5 border border-slate-800">
+                    <div className="bg-[#192437] rounded-lg px-2.5 py-1.5 border border-slate-700/70">
                       <span className="text-slate-400 block text-[10px]">Toplam Kayıt</span>
                       <span className="font-black text-yellow-400 text-xs">{recordsCount} Kayıt</span>
                     </div>
@@ -275,7 +275,7 @@ export const Header: React.FC<HeaderProps> = ({
                         className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer ${
                           isActive
                             ? 'bg-yellow-400/20 text-yellow-300 font-black border border-yellow-500/50 shadow-xs'
-                            : 'hover:bg-[#18202e] text-slate-200'
+                            : 'hover:bg-[#223048] text-slate-200'
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -297,7 +297,7 @@ export const Header: React.FC<HeaderProps> = ({
                             {item.badge}
                           </span>
                         ) : (
-                          <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-yellow-400' : 'text-slate-600'}`} />
+                          <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-yellow-400' : 'text-slate-500'}`} />
                         )}
                       </button>
                     );
@@ -305,7 +305,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 {/* Dropdown Footer: Live Google E-Tablo Status + Quick ZIP Export + Logout */}
-                <div className="p-3 bg-[#0a0e17] border-t border-slate-800 space-y-2">
+                <div className="p-3 bg-[#131b2a] border-t border-slate-700/80 space-y-2">
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold px-1">
                     <span className="flex items-center gap-1.5">
                       <FileSpreadsheet className="w-3.5 h-3.5 text-yellow-400" />

@@ -325,7 +325,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </div>
 
       {/* Form Section (Sarı - Siyah Koyu Tema) */}
-      <div className="bg-[#121824] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-yellow-500/30 shadow-xl space-y-4">
+      <div className="bg-[#1b263b] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-yellow-500/30 shadow-xl space-y-4">
         <h3 className="text-base sm:text-lg font-black text-white border-b border-slate-800 pb-3 flex items-center gap-2">
           <Plus className="w-5 h-5 text-yellow-400" />
           <span>{editingId ? 'Bakım Tanımını Düzenle' : 'Yeni Bakım Tanımı Ekle'}</span>
@@ -347,7 +347,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <div className="relative">
                 <div
                   onClick={() => setMachineDropdownOpen(true)}
-                  className="w-full flex items-center gap-2 bg-[#0b0f17] border border-slate-700 hover:border-yellow-400/70 focus-within:border-yellow-400 focus-within:ring-1 focus-within:ring-yellow-400 rounded-xl px-3 py-2.5 text-sm cursor-text transition-all"
+                  className="w-full flex items-center gap-2 bg-[#141d2d] border border-slate-700 hover:border-yellow-400/70 focus-within:border-yellow-400 focus-within:ring-1 focus-within:ring-yellow-400 rounded-xl px-3 py-2.5 text-sm cursor-text transition-all"
                 >
                   <Search className="w-4 h-4 text-yellow-400 shrink-0" />
                   <input
@@ -399,7 +399,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
                 {/* Dropdown Results List */}
                 {machineDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#101520] border border-yellow-500/40 rounded-xl shadow-2xl z-30 max-h-64 overflow-y-auto p-1.5 space-y-1">
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#1b263b] border border-yellow-500/40 rounded-xl shadow-2xl z-30 max-h-64 overflow-y-auto p-1.5 space-y-1">
                     <div className="px-2.5 py-1.5 text-[11px] font-bold text-slate-400 border-b border-slate-800 flex items-center justify-between">
                       <span>Makineler ({filteredMachines.length})</span>
                       {machineSearchQuery && (
@@ -467,7 +467,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                       className={`px-3 py-2 rounded-xl text-xs font-black transition-all border flex items-center justify-between cursor-pointer active:scale-95 ${
                         isSelected
                           ? `${badgeStyle} ring-2 ring-yellow-400 shadow-lg scale-102 font-black`
-                          : 'bg-[#0b0f17] border-slate-700 text-slate-300 hover:border-slate-500'
+                          : 'bg-[#141d2d] border-slate-700 text-slate-300 hover:border-slate-500'
                       }`}
                     >
                       <span className="truncate">{d.ad}</span>
@@ -488,7 +488,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
                 placeholder="Örn: Besleme Ünitesi, Fırın Girişi"
-                className="w-full px-3.5 py-2.5 bg-[#0b0f17] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
+                className="w-full px-3.5 py-2.5 bg-[#141d2d] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
               />
             </div>
 
@@ -502,7 +502,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 value={part}
                 onChange={(e) => setPart(e.target.value)}
                 placeholder="Örn: Rulman, Basınç Valfi, Servo Motor"
-                className="w-full px-3.5 py-2.5 bg-[#0b0f17] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
+                className="w-full px-3.5 py-2.5 bg-[#141d2d] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
               />
             </div>
 
@@ -517,7 +517,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 required
                 rows={2}
                 placeholder="Operatörün sahada uygulayacağı kontrol talimatı..."
-                className="w-full px-3.5 py-2.5 bg-[#0b0f17] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
+                className="w-full px-3.5 py-2.5 bg-[#141d2d] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
               />
             </div>
 
@@ -531,7 +531,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
                 placeholder="Örn: 210 bar ± 5 bar, 8.2mm, Max 55°C"
-                className="w-full px-3.5 py-2.5 bg-[#0b0f17] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
+                className="w-full px-3.5 py-2.5 bg-[#141d2d] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white placeholder:text-slate-500 rounded-xl text-xs sm:text-sm font-medium"
               />
             </div>
 
@@ -545,13 +545,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 min={1}
                 value={orderNo}
                 onChange={(e) => setOrderNo(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 bg-[#0b0f17] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white rounded-xl text-xs sm:text-sm font-medium"
+                className="w-full px-3.5 py-2.5 bg-[#141d2d] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-white rounded-xl text-xs sm:text-sm font-medium"
               />
             </div>
           </div>
 
           {/* Reference Image Upload & Preview (Zorunlu Alan) */}
-          <div className="p-4 bg-[#0b0f17] rounded-xl border border-slate-800">
+          <div className="p-4 bg-[#141d2d] rounded-xl border border-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
               <div className="flex items-center gap-2">
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
@@ -595,7 +595,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </label>
 
               {refImageBase64 && (
-                <div className="flex items-center gap-2.5 bg-[#121824] px-3 py-1.5 rounded-xl border border-yellow-500/30">
+                <div className="flex items-center gap-2.5 bg-[#1b263b] px-3 py-1.5 rounded-xl border border-yellow-500/30">
                   <img
                     src={refImageBase64}
                     alt="Referans Önizleme"
@@ -713,7 +713,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </div>
 
       {/* Existing Templates Section (Kayıtlı Bakım Tanımları - Koyu Sarı-Siyah Tema) */}
-      <div className="bg-[#121824] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-yellow-500/30 shadow-xl space-y-4">
+      <div className="bg-[#1b263b] p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-yellow-500/30 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-base sm:text-lg font-black text-white">Kayıtlı Bakım Tanımları</h3>
@@ -724,14 +724,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
             <button
               type="button"
               onClick={() => handleToggleAll(true)}
-              className="px-3 py-1.5 bg-[#0b0f17] hover:bg-slate-800 text-slate-300 font-bold rounded-lg text-xs border border-slate-700 transition-colors"
+              className="px-3 py-1.5 bg-[#141d2d] hover:bg-slate-800 text-slate-300 font-bold rounded-lg text-xs border border-slate-700 transition-colors"
             >
               Tümünü Aç
             </button>
             <button
               type="button"
               onClick={() => handleToggleAll(false)}
-              className="px-3 py-1.5 bg-[#0b0f17] hover:bg-slate-800 text-slate-300 font-bold rounded-lg text-xs border border-slate-700 transition-colors"
+              className="px-3 py-1.5 bg-[#141d2d] hover:bg-slate-800 text-slate-300 font-bold rounded-lg text-xs border border-slate-700 transition-colors"
             >
               Tümünü Kapat
             </button>
@@ -745,7 +745,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             placeholder="Makine veya bakım arayın..."
-            className="w-full pl-9 pr-4 py-2.5 bg-[#0b0f17] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 rounded-xl text-xs sm:text-sm font-semibold text-white placeholder:text-slate-500"
+            className="w-full pl-9 pr-4 py-2.5 bg-[#141d2d] border border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 rounded-xl text-xs sm:text-sm font-semibold text-white placeholder:text-slate-500"
           />
           <Search className="w-4 h-4 text-yellow-400 absolute left-3 top-3" />
         </div>
@@ -787,13 +787,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
                 {/* Accordion Body */}
                 {isOpen && (
-                  <div className="divide-y divide-slate-800/80 bg-[#0e131d]">
+                  <div className="divide-y divide-slate-800/80 bg-[#162030]">
                     {groupTasks.map((t, idx) => {
                       const dept = getDeptInfo(t.system);
                       const deptBadgeStyle = getDeptBadgeStyle(dept);
 
                       return (
-                        <div key={t.templateId} className="p-3.5 flex items-start justify-between gap-3 hover:bg-[#121824] transition-colors">
+                        <div key={t.templateId} className="p-3.5 flex items-start justify-between gap-3 hover:bg-[#1b263b] transition-colors">
                           <div className="space-y-1.5 min-w-0">
                             <div className="font-extrabold text-sm text-white leading-snug break-words">
                               <span className="text-yellow-400 mr-1.5">{idx + 1}.</span>

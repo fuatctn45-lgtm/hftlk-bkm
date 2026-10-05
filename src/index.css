@@ -5,7 +5,7 @@
   letter-spacing: -0.015em;
   --header-height: 58px;
   --color-industrial-yellow: #facc15;
-  --color-industrial-black: #0b0f17;
+  --color-industrial-black: #131d2e;
 }
 
 html, body, #root {
@@ -17,7 +17,7 @@ html, body, #root {
   padding: 0;
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
-  background-color: #0b0f17;
+  background-color: #131d2e;
   color: #f8fafc;
 }
 

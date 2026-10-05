@@ -196,7 +196,7 @@ const LightboxModal: React.FC<LightboxModalProps> = ({ data, onClose }) => {
         className="relative max-w-5xl w-full max-h-[96vh] flex flex-col items-center gap-2"
       >
         {/* Modal Toolbar Header */}
-        <div className="w-full bg-[#121824] border border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xl">
+        <div className="w-full bg-[#1b263b] border border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xl">
           <div className="flex items-center gap-2 min-w-0">
             <Camera className="w-4 h-4 text-yellow-400 shrink-0" />
             <span className="font-black text-xs sm:text-sm text-yellow-400 truncate max-w-xs sm:max-w-md">
@@ -207,7 +207,7 @@ const LightboxModal: React.FC<LightboxModalProps> = ({ data, onClose }) => {
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Zoom Controls */}
             {!useIframe && (
-              <div className="flex items-center bg-[#0b0f17] border border-slate-700 rounded-xl p-0.5 text-xs text-slate-300">
+              <div className="flex items-center bg-[#141d2d] border border-slate-700 rounded-xl p-0.5 text-xs text-slate-300">
                 <button
                   type="button"
                   onClick={handleZoomOut}
@@ -261,7 +261,7 @@ const LightboxModal: React.FC<LightboxModalProps> = ({ data, onClose }) => {
         </div>
 
         {/* Modal Image Box */}
-        <div className="relative w-full max-h-[82vh] min-h-[50vh] flex items-center justify-center rounded-2xl bg-[#080b11] border border-yellow-500/40 p-2 overflow-auto shadow-2xl">
+        <div className="relative w-full max-h-[82vh] min-h-[50vh] flex items-center justify-center rounded-2xl bg-[#101726] border border-yellow-500/40 p-2 overflow-auto shadow-2xl">
           {!imgLoaded && !useIframe && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 z-10">
               <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
@@ -376,7 +376,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4">
       {/* Header (Sarı-Siyah) */}
-      <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#1b263b] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-xl bg-yellow-400 text-black flex items-center justify-center shrink-0 shadow-md shadow-yellow-500/20">
@@ -396,17 +396,17 @@ export const RedListView: React.FC<RedListViewProps> = ({
             text={`Açık arıza listesi: Şu anda seçili dönemde toplam ${redRecords.length} adet RED arıza kaydı bulunmaktadır. Etkilenen makine sayısı ${affectedMachines}.`}
             label="Seslendir"
             size="sm"
-            className="bg-[#0b0f17] text-yellow-400 border-yellow-500/30"
+            className="bg-[#141d2d] text-yellow-400 border-yellow-500/30"
           />
         )}
       </div>
 
       {/* Filters Card */}
-      <div className="bg-[#121824] p-4 rounded-2xl border border-slate-800 shadow-md space-y-3">
+      <div className="bg-[#1b263b] p-4 rounded-2xl border border-slate-800 shadow-md space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-400 mb-1">Dönem</label>
-            <div className="flex items-center bg-[#0b0f17] p-1 rounded-xl text-xs font-bold border border-slate-800">
+            <div className="flex items-center bg-[#141d2d] p-1 rounded-xl text-xs font-bold border border-slate-800">
               <button
                 type="button"
                 onClick={() => setPeriodFilter('bu')}
@@ -442,7 +442,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
             <select
               value={selectedMachine}
               onChange={(e) => setSelectedMachine(e.target.value)}
-              className="w-full px-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="w-full px-3 py-2 bg-[#141d2d] border border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               <option value="">Tüm Makineler</option>
               {machines.map((m) => (
@@ -461,7 +461,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Açıklama veya parça ara..."
-                className="w-full pl-8 pr-3 py-2 bg-[#0b0f17] border border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                className="w-full pl-8 pr-3 py-2 bg-[#141d2d] border border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             </div>
@@ -473,10 +473,10 @@ export const RedListView: React.FC<RedListViewProps> = ({
           <span className="px-2.5 py-1 rounded-xl bg-rose-950/60 text-rose-300 border border-rose-800/60">
             Açık RED: <b>{redRecords.length}</b>
           </span>
-          <span className="px-2.5 py-1 rounded-xl bg-[#18202e] text-yellow-400 border border-yellow-400/30">
+          <span className="px-2.5 py-1 rounded-xl bg-[#1e2a3f] text-yellow-400 border border-yellow-400/30">
             Etkilenen: <b>{affectedMachines} Makine</b>
           </span>
-          <span className="px-2.5 py-1 rounded-xl bg-[#18202e] text-slate-300 border border-slate-700">
+          <span className="px-2.5 py-1 rounded-xl bg-[#1e2a3f] text-slate-300 border border-slate-700">
             Fotoğraflı: <b>{photoCount}</b>
           </span>
         </div>
@@ -484,7 +484,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
 
       {/* List of Red Records */}
       {redRecords.length === 0 ? (
-        <div className="bg-[#121824] p-8 sm:p-12 rounded-2xl border border-slate-800 text-center shadow-md space-y-2">
+        <div className="bg-[#1b263b] p-8 sm:p-12 rounded-2xl border border-slate-800 text-center shadow-md space-y-2">
           <div className="w-12 h-12 bg-emerald-950/60 text-emerald-400 border border-emerald-800/50 rounded-2xl flex items-center justify-center mx-auto mb-2">
             <CheckCircle2 className="w-6 h-6" />
           </div>
@@ -507,7 +507,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
             return (
               <article
                 key={r.recordId}
-                className="bg-[#121824] rounded-2xl border border-slate-800 shadow-md hover:border-slate-700 transition-all p-4 sm:p-5 space-y-3 overflow-hidden relative"
+                className="bg-[#1b263b] rounded-2xl border border-slate-800 shadow-md hover:border-slate-700 transition-all p-4 sm:p-5 space-y-3 overflow-hidden relative"
               >
                 <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-rose-600" />
                 
@@ -526,11 +526,11 @@ export const RedListView: React.FC<RedListViewProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 font-semibold">
-                    <span className="flex items-center gap-1 bg-[#18202e] px-2 py-0.5 rounded-md border border-slate-700">
+                    <span className="flex items-center gap-1 bg-[#1e2a3f] px-2 py-0.5 rounded-md border border-slate-700">
                       <User className="w-3.5 h-3.5 text-yellow-400" />
                       <span className="text-slate-200">{r.operator}</span>
                     </span>
-                    <span className="flex items-center gap-1 bg-[#18202e] px-2 py-0.5 rounded-md border border-slate-700">
+                    <span className="flex items-center gap-1 bg-[#1e2a3f] px-2 py-0.5 rounded-md border border-slate-700">
                       <Calendar className="w-3.5 h-3.5 text-slate-400" />
                       <span>{dateStr}</span>
                     </span>
@@ -542,7 +542,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
 
                 {/* Task & Target info */}
                 {(r.task || r.measuredValue) && (
-                  <div className="text-xs bg-[#0b0f17] p-3 rounded-xl border border-slate-800 text-slate-300 flex flex-wrap gap-x-4 gap-y-1.5 ml-2">
+                  <div className="text-xs bg-[#141d2d] p-3 rounded-xl border border-slate-800 text-slate-300 flex flex-wrap gap-x-4 gap-y-1.5 ml-2">
                     {r.task && (
                       <div>
                         <span className="text-slate-400">Bakım:</span> <b className="text-white">{r.task}</b>
@@ -616,7 +616,7 @@ export const RedListView: React.FC<RedListViewProps> = ({
       {/* In-App Resolve Confirmation Modal */}
       {pendingResolveRecord && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-[#121824] rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-yellow-500/40 space-y-4 animate-in zoom-in-95">
+          <div className="bg-[#1b263b] rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-yellow-500/40 space-y-4 animate-in zoom-in-95">
             <div className="w-12 h-12 bg-yellow-400 text-black rounded-full flex items-center justify-center mx-auto shadow-md shadow-yellow-500/20">
               <Check className="w-6 h-6 text-black" />
             </div>
