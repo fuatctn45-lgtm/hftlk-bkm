@@ -536,6 +536,49 @@ app.get('/api/export-github-pages-zip', (req, res) => {
   });
 });
 
+/**
+ * Universal Android-friendly Google Drive Image Proxy
+ * Streamlines image delivery to prevent CORS, Referer, and third-party cookie blocks on mobile
+ */
+app.get('/api/drive-image/:fileId', async (req, res) => {
+  const { fileId } = req.params;
+  if (!fileId || fileId.length < 5) {
+    return res.status(400).send('Invalid fileId');
+  }
+
+  const endpoints = [
+    `https://lh3.googleusercontent.com/d/${fileId}=w1600`,
+    `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`,
+    `https://drive.google.com/uc?export=view&id=${fileId}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        if (contentType.includes('image')) {
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+          const arrayBuffer = await response.arrayBuffer();
+          return res.send(Buffer.from(arrayBuffer));
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback direct redirect
+  res.redirect(`https://lh3.googleusercontent.com/d/${fileId}=w1600`);
+});
+
 // Mount Vite or serve static production build
 async function startServer() {
   // Mobile / Android anti-cache middleware for HTML and entry scripts

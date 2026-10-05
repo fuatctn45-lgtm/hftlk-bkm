@@ -10,6 +10,7 @@ import {
 import { getWeekKey, cmmsApi } from '../services/cmmsApi';
 import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { analyzeMaintenancePhoto } from '../services/geminiService';
+import { extractDriveFileId } from './RedListView';
 import {
   Search,
   Camera,
@@ -253,6 +254,17 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           cleanSys.includes(d.deger.toLocaleUpperCase('tr-TR'))
       ) || null
     );
+  };
+
+  // Helper: resolve Google Drive URL to Android-compatible proxy / direct CDN
+  const resolveDriveImageUrl = (url?: string | null): string => {
+    if (!url) return '';
+    if (url.startsWith('data:')) return url;
+    const fId = extractDriveFileId(url);
+    if (fId) {
+      return `/api/drive-image/${fId}`;
+    }
+    return url;
   };
 
   // Helper: compute department style matching the RED fault panel style
@@ -1291,8 +1303,16 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             className="relative w-full max-h-56 sm:max-h-64 aspect-16/9 bg-black rounded-xl overflow-hidden border border-yellow-500/30 cursor-zoom-in group shadow-inner"
           >
             <img
-              src={selectedTask.referenceImageUrl}
+              src={resolveDriveImageUrl(selectedTask.referenceImageUrl)}
               alt="Referans Resim"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                const fId = extractDriveFileId(selectedTask.referenceImageUrl);
+                if (fId && !e.currentTarget.src.includes('lh3.googleusercontent')) {
+                  e.currentTarget.src = `https://lh3.googleusercontent.com/d/${fId}=w1000`;
+                }
+              }}
               className="w-full h-full object-contain"
             />
             <div className="absolute right-2 bottom-2 bg-yellow-400 text-black text-[11px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md">
@@ -1622,8 +1642,16 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <X className="w-7 h-7" />
             </button>
             <img
-              src={selectedTask.referenceImageUrl}
+              src={resolveDriveImageUrl(selectedTask.referenceImageUrl)}
               alt="Referans Resim"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                const fId = extractDriveFileId(selectedTask.referenceImageUrl);
+                if (fId && !e.currentTarget.src.includes('lh3.googleusercontent')) {
+                  e.currentTarget.src = `https://lh3.googleusercontent.com/d/${fId}=w1600`;
+                }
+              }}
               className="max-w-full max-h-[80vh] object-contain rounded-2xl bg-black border border-yellow-500/40 shadow-2xl"
             />
           </div>

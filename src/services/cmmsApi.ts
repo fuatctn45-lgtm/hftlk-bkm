@@ -556,17 +556,37 @@ export const cmmsApi = {
    */
   async saveTemplate(template: MaintenanceTemplate): Promise<{ success: boolean; templateId: string; message?: string }> {
     try {
+      const imgName = template.referenceImageName || template.imageName || `ref_${Date.now()}.jpg`;
+      const isPng = imgName.toLowerCase().endsWith('.png');
+      const imgType = isPng ? 'image/png' : 'image/jpeg';
+      const imgBase64 = template.referenceImageUrl && template.referenceImageUrl.includes(',')
+        ? template.referenceImageUrl.split(',')[1]
+        : (template.referenceImageUrl || '');
+
+      const payloadObj = {
+        ...template,
+        referenceImageName: imgName,
+        imageName: imgName,
+      };
+
       if (template.templateId) {
-        const data = await callCmmsApi('updateMaintenanceTemplate', { payload: JSON.stringify(template) });
+        const data = await rawFormPost('updateMaintenanceTemplate', {
+          payload: JSON.stringify(payloadObj),
+          imageBase64: imgBase64,
+          imageName: imgName,
+          referenceImageName: imgName,
+          imageType: imgType,
+        });
         if (data && data.success) {
           return { success: true, templateId: template.templateId };
         }
       } else {
         const res = await rawFormPost('createMaintenanceTemplateWithImage', {
-          payload: JSON.stringify(template),
-          imageBase64: template.referenceImageUrl ? template.referenceImageUrl.split(',')[1] : '',
-          imageName: 'ref.jpg',
-          imageType: 'image/jpeg',
+          payload: JSON.stringify(payloadObj),
+          imageBase64: imgBase64,
+          imageName: imgName,
+          referenceImageName: imgName,
+          imageType: imgType,
         });
         if (res && res.success) {
           return { success: true, templateId: res.templateId || `TMP-${Date.now()}` };

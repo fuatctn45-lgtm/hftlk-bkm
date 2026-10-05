@@ -25,6 +25,8 @@ export interface MaintenanceTemplate {
   photoRequired?: boolean;
   active: boolean;
   referenceImageUrl?: string;
+  referenceImageName?: string;
+  imageName?: string;
 }
 
 export interface MaintenanceRecord {

@@ -46,6 +46,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [photoRequired, setPhotoRequired] = useState(false);
   const [active, setActive] = useState(true);
   const [refImageBase64, setRefImageBase64] = useState<string | null>(null);
+  const [refImageName, setRefImageName] = useState<string>('');
 
   // Search & Collapsible groups
   const [filterQuery, setFilterQuery] = useState('');
@@ -160,6 +161,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setPhotoRequired(Boolean(t.photoRequired));
     setActive(Boolean(t.active));
     setRefImageBase64(t.referenceImageUrl || null);
+    setRefImageName(t.referenceImageName || t.imageName || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -176,12 +178,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setPhotoRequired(false);
     setActive(true);
     setRefImageBase64(null);
+    setRefImageName('');
     setStatusMessage(null);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setRefImageName(file.name);
       const reader = new FileReader();
       reader.onload = (event) => {
         const rawData = event.target?.result as string;
@@ -258,6 +262,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
         photoRequired,
         active,
         referenceImageUrl: refImageBase64 || undefined,
+        referenceImageName: refImageName || undefined,
+        imageName: refImageName || undefined,
       });
 
       if (res.success) {
@@ -595,11 +601,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     alt="Referans Önizleme"
                     className="w-14 h-12 object-cover rounded-lg border border-yellow-400/50 shadow-sm"
                   />
-                  <div className="text-left">
-                    <span className="text-xs font-bold text-white block">Teknik Şema Yüklendi</span>
+                  <div className="text-left max-w-xs">
+                    <span className="text-xs font-bold text-white block truncate" title={refImageName || 'Teknik Şema'}>
+                      {refImageName || 'Teknik Şema Yüklendi'}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setRefImageBase64(null)}
+                      onClick={() => {
+                        setRefImageBase64(null);
+                        setRefImageName('');
+                      }}
                       className="text-[11px] text-rose-400 font-bold hover:underline cursor-pointer block mt-0.5"
                     >
                       Resmi Kaldır

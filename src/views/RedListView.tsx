@@ -18,6 +18,8 @@ import {
   ArrowRight,
   ExternalLink,
   Loader2,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 
 // Helper: extract Google Drive File ID from diverse Drive link formats
@@ -72,8 +74,9 @@ const ProofImagePreview: React.FC<{
     if (localBase64) list.push(localBase64);
     if (rawUrl.startsWith('data:')) list.push(rawUrl);
     if (fileId) {
-      list.push(`https://drive.google.com/thumbnail?id=${fileId}&sz=w800`);
-      list.push(`https://lh3.googleusercontent.com/d/${fileId}=w800`);
+      list.push(`/api/drive-image/${fileId}`);
+      list.push(`https://lh3.googleusercontent.com/d/${fileId}=w1000`);
+      list.push(`https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`);
       list.push(`https://drive.google.com/uc?export=view&id=${fileId}`);
     } else if (rawUrl) {
       list.push(rawUrl);
@@ -102,6 +105,8 @@ const ProofImagePreview: React.FC<{
         <img
           src={currentUrl}
           alt="Saha Kanıt Fotoğrafı"
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
           onLoad={() => setImgLoaded(true)}
           onError={handleImgError}
           className="w-full h-full object-cover"
@@ -133,6 +138,7 @@ const ProofImagePreview: React.FC<{
             href={driveViewUrl}
             target="_blank"
             rel="noopener noreferrer"
+            referrerPolicy="no-referrer"
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-white font-medium hover:underline"
           >
@@ -140,6 +146,160 @@ const ProofImagePreview: React.FC<{
             <ExternalLink className="w-3 h-3" />
           </a>
         )}
+      </div>
+    </div>
+  );
+};
+
+interface LightboxModalProps {
+  data: {
+    url: string;
+    driveViewUrl?: string;
+    caption?: string;
+    fileId?: string;
+  };
+  onClose: () => void;
+}
+
+const LightboxModal: React.FC<LightboxModalProps> = ({ data, onClose }) => {
+  const [zoom, setZoom] = useState(1);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [useIframe, setUseIframe] = useState(false);
+
+  const candidateUrls = React.useMemo(() => {
+    const list: string[] = [];
+    if (data.url.startsWith('data:')) list.push(data.url);
+    if (data.fileId) {
+      list.push(`/api/drive-image/${data.fileId}`);
+      list.push(`https://lh3.googleusercontent.com/d/${data.fileId}=w1600`);
+      list.push(`https://drive.google.com/thumbnail?id=${data.fileId}&sz=w1600`);
+      list.push(`https://drive.google.com/uc?export=view&id=${data.fileId}`);
+    }
+    if (data.url && !list.includes(data.url)) list.push(data.url);
+    return list;
+  }, [data]);
+
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const currentSrc = candidateUrls[currentIdx] || data.url;
+
+  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.35, 3));
+  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.35, 0.7));
+  const handleResetZoom = () => setZoom(1);
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-2 sm:p-4 backdrop-blur-md animate-in fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-5xl w-full max-h-[96vh] flex flex-col items-center gap-2"
+      >
+        {/* Modal Toolbar Header */}
+        <div className="w-full bg-[#121824] border border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xl">
+          <div className="flex items-center gap-2 min-w-0">
+            <Camera className="w-4 h-4 text-yellow-400 shrink-0" />
+            <span className="font-black text-xs sm:text-sm text-yellow-400 truncate max-w-xs sm:max-w-md">
+              {data.caption || 'Saha Kanıt Fotoğrafı'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Zoom Controls */}
+            {!useIframe && (
+              <div className="flex items-center bg-[#0b0f17] border border-slate-700 rounded-xl p-0.5 text-xs text-slate-300">
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  title="Uzaklaştır"
+                  className="p-1.5 hover:text-yellow-400 hover:bg-slate-800 rounded-lg cursor-pointer"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  title="Sıfırla"
+                  className="px-2 font-mono font-bold text-[11px] text-yellow-400 hover:underline cursor-pointer"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  title="Yakınlaştır"
+                  className="p-1.5 hover:text-yellow-400 hover:bg-slate-800 rounded-lg cursor-pointer"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Direct Google Drive Link */}
+            {data.driveViewUrl && (
+              <a
+                href={data.driveViewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+                className="px-2.5 sm:px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+              >
+                <span>Google Drive'da Aç</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 bg-slate-800 hover:bg-rose-950/80 text-slate-300 hover:text-rose-400 rounded-xl cursor-pointer transition-colors border border-slate-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Image Box */}
+        <div className="relative w-full max-h-[82vh] min-h-[50vh] flex items-center justify-center rounded-2xl bg-[#080b11] border border-yellow-500/40 p-2 overflow-auto shadow-2xl">
+          {!imgLoaded && !useIframe && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 z-10">
+              <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
+              <span className="text-xs font-bold text-slate-300">Görsel Yükleniyor...</span>
+            </div>
+          )}
+
+          {useIframe && data.fileId ? (
+            <iframe
+              src={`https://drive.google.com/file/d/${data.fileId}/preview`}
+              title="Google Drive Önizleme"
+              className="w-full h-[72vh] rounded-xl border-0 bg-black"
+              allow="autoplay"
+            />
+          ) : (
+            <img
+              src={currentSrc}
+              alt={data.caption || 'Büyütülmüş Görsel'}
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onLoad={() => setImgLoaded(true)}
+              onError={() => {
+                if (currentIdx < candidateUrls.length - 1) {
+                  setCurrentIdx((prev) => prev + 1);
+                } else if (data.fileId) {
+                  setUseIframe(true);
+                }
+              }}
+              style={{
+                transform: `scale(${zoom})`,
+                transition: 'transform 0.15s ease-out',
+                maxWidth: zoom > 1 ? 'none' : '100%',
+                maxHeight: zoom > 1 ? 'none' : '76vh',
+              }}
+              className="object-contain rounded-xl select-none shadow-xl cursor-grab active:cursor-grabbing"
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -448,68 +608,9 @@ export const RedListView: React.FC<RedListViewProps> = ({
         </div>
       )}
 
-      {/* Lightbox Modal with Google Drive direct integration */}
+      {/* Lightbox Modal with Android-compatible high-res image and zoom */}
       {lightboxData && (
-        <div
-          onClick={() => setLightboxData(null)}
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-3 sm:p-5 backdrop-blur-xs animate-in fade-in"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative max-w-4xl w-full max-h-[92vh] flex flex-col items-center gap-2.5"
-          >
-            {/* Modal Header */}
-            <div className="w-full flex items-center justify-between text-white border-b border-slate-800 pb-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Camera className="w-4 h-4 text-yellow-400 shrink-0" />
-                <span className="font-black text-xs sm:text-sm text-yellow-400 truncate">
-                  {lightboxData.caption || 'Saha Kanıt Fotoğrafı'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {lightboxData.driveViewUrl && (
-                  <a
-                    href={lightboxData.driveViewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-2.5 sm:px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-lg text-xs flex items-center gap-1.5 shadow-md"
-                  >
-                    <span>Google Drive'da Aç</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setLightboxData(null)}
-                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-yellow-400 hover:text-white rounded-lg cursor-pointer transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Image Box */}
-            <div className="relative w-full max-h-[82vh] flex items-center justify-center rounded-2xl bg-[#080b11] border border-yellow-500/40 p-2 overflow-hidden shadow-2xl">
-              {lightboxData.fileId ? (
-                <div className="w-full h-[72vh] flex flex-col">
-                  {/* Google Drive interactive iframe with full zoom/pan */}
-                  <iframe
-                    src={`https://drive.google.com/file/d/${lightboxData.fileId}/preview`}
-                    title="Google Drive Önizleme"
-                    className="w-full h-full rounded-xl border-0 bg-black"
-                    allow="autoplay"
-                  />
-                </div>
-              ) : (
-                <img
-                  src={lightboxData.url}
-                  alt="Büyütülmüş Görsel"
-                  className="max-w-full max-h-[74vh] object-contain rounded-xl shadow-lg"
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        <LightboxModal data={lightboxData} onClose={() => setLightboxData(null)} />
       )}
 
       {/* In-App Resolve Confirmation Modal */}
