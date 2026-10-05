@@ -538,6 +538,21 @@ app.get('/api/export-github-pages-zip', (req, res) => {
 
 // Mount Vite or serve static production build
 async function startServer() {
+  // Mobile / Android anti-cache middleware for HTML and entry scripts
+  app.use((req, res, next) => {
+    if (
+      req.path === '/' ||
+      req.path.endsWith('.html') ||
+      req.path.includes('index.js') ||
+      req.path.includes('index.css')
+    ) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    next();
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -546,8 +561,21 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(process.cwd(), 'dist')));
+    app.use(express.static(path.resolve(process.cwd(), 'dist'), {
+      etag: false,
+      lastModified: false,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html') || filePath.includes('index.js') || filePath.includes('index.css')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        }
+      },
+    }));
     app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(path.resolve(process.cwd(), 'dist/index.html'));
     });
   }

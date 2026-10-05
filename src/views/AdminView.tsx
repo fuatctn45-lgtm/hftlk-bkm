@@ -17,6 +17,8 @@ import {
   Shield,
   Layers,
   Sparkles,
+  AlertTriangle,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -182,7 +184,37 @@ export const AdminView: React.FC<AdminViewProps> = ({
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setRefImageBase64(event.target?.result as string);
+        const rawData = event.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1000;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'medium';
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.75);
+            setRefImageBase64(compressed);
+            return;
+          }
+          setRefImageBase64(rawData);
+        };
+        img.onerror = () => setRefImageBase64(rawData);
+        img.src = rawData;
       };
       reader.readAsDataURL(file);
     }
@@ -190,6 +222,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!refImageBase64) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Referans resmi (teknik şema) yüklenmeden bakım tanımı kaydedilemez.',
+      });
+      return;
+    }
     if (!machineId) {
       setStatusMessage({ type: 'error', text: 'Lütfen bir makine seçiniz.' });
       return;
@@ -505,37 +544,77 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
           </div>
 
-          {/* Reference Image Upload & Preview */}
+          {/* Reference Image Upload & Preview (Zorunlu Alan) */}
           <div className="p-4 bg-[#0b0f17] rounded-xl border border-slate-800">
-            <label className="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">
-              Referans Resim (Teknik Şema)
-            </label>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Referans Resim (Teknik Şema) *
+                </label>
+                <span
+                  className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+                    refImageBase64
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                  }`}
+                >
+                  {refImageBase64 ? 'Görsel Hazır ✔' : 'Zorunlu Alan'}
+                </span>
+              </div>
+
+              {refImageBase64 ? (
+                <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> Kayıt Düğmesi Aktifleşti
+                </span>
+              ) : (
+                <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Kayıt için resim zorunludur
+                </span>
+              )}
+            </div>
+
             <div className="flex flex-wrap items-center gap-4">
               <label className="cursor-pointer">
-                <span className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-yellow-400 border border-yellow-500/30 rounded-xl font-bold text-xs flex items-center gap-2 transition-all">
-                  <Upload className="w-4 h-4 text-yellow-400" />
-                  <span>Resim Dosyası Seç</span>
+                <span
+                  className={`px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all border ${
+                    refImageBase64
+                      ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/20'
+                      : 'bg-yellow-400 text-black border-yellow-300 hover:bg-yellow-300 shadow-md shadow-yellow-500/20'
+                  }`}
+                >
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span>{refImageBase64 ? 'Resmi Değiştir' : 'Referans Resmi Seç / Yükle'}</span>
                 </span>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </label>
 
               {refImageBase64 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5 bg-[#121824] px-3 py-1.5 rounded-xl border border-yellow-500/30">
                   <img
                     src={refImageBase64}
                     alt="Referans Önizleme"
-                    className="w-16 h-12 object-cover rounded-lg border border-yellow-500/40 shadow-xs"
+                    className="w-14 h-12 object-cover rounded-lg border border-yellow-400/50 shadow-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setRefImageBase64(null)}
-                    className="text-xs text-rose-400 font-bold hover:underline"
-                  >
-                    Kaldır
-                  </button>
+                  <div className="text-left">
+                    <span className="text-xs font-bold text-white block">Teknik Şema Yüklendi</span>
+                    <button
+                      type="button"
+                      onClick={() => setRefImageBase64(null)}
+                      className="text-[11px] text-rose-400 font-bold hover:underline cursor-pointer block mt-0.5"
+                    >
+                      Resmi Kaldır
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
+
+            {!refImageBase64 && (
+              <div className="mt-3 p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-xs text-amber-300 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Bakım tanımı kayıt düğmesini aktifleştirmek için lütfen bir teknik şema / referans resmi yükleyin.</span>
+              </div>
+            )}
           </div>
 
           {/* Checkbox Options */}
@@ -573,32 +652,52 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 pt-2">
-            <button
-              type="submit"
-              disabled={saveLoading}
-              className="py-3 px-6 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-yellow-500/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
-            >
-              {saveLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-black" />
-                  <span>Kaydediliyor...</span>
-                </>
-              ) : (
-                <span>{editingId ? 'Değişiklikleri Kaydet' : 'Bakım Tanımını Kaydet'}</span>
-              )}
-            </button>
+          {/* Action Buttons: Kayıt düğmesi sadece resim olunca aktif */}
+          {(() => {
+            const isSaveDisabled = saveLoading || !refImageBase64;
+            return (
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSaveDisabled}
+                  className={`py-3 px-6 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 ${
+                    isSaveDisabled
+                      ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
+                      : 'bg-yellow-400 hover:bg-yellow-300 text-black shadow-lg shadow-yellow-500/20 cursor-pointer active:scale-95'
+                  }`}
+                >
+                  {saveLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>Kaydediliyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      {refImageBase64 && <Check className="w-4 h-4 shrink-0" />}
+                      <span>{editingId ? 'Değişiklikleri Kaydet' : 'Bakım Tanımını Kaydet'}</span>
+                    </>
+                  )}
+                </button>
 
-            {editingId && (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs sm:text-sm border border-slate-700 cursor-pointer"
-              >
-                Vazgeç
-              </button>
-            )}
-          </div>
+                {isSaveDisabled && !saveLoading && (
+                  <div className="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Referans resmi olmadan kayıt düğmesi aktif olmaz</span>
+                  </div>
+                )}
+
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs sm:text-sm border border-slate-700 cursor-pointer"
+                  >
+                    Vazgeç
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </form>
       </div>
 

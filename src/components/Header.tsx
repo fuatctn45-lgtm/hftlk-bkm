@@ -74,6 +74,26 @@ export const Header: React.FC<HeaderProps> = ({
     setDropdownOpen(false);
   };
 
+  const handleHardRefresh = () => {
+    try {
+      localStorage.removeItem('cmmsLiveMachines_v5');
+      localStorage.removeItem('cmmsLiveTemplates_v5');
+      localStorage.removeItem('cmmsLiveRecords_v5');
+      sessionStorage.clear();
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          for (const name of names) caches.delete(name);
+        });
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const reg of registrations) reg.unregister();
+        });
+      }
+    } catch {}
+    window.location.href = window.location.origin + window.location.pathname + '?_t=' + Date.now();
+  };
+
   const navItems = [
     {
       id: 'home' as const,
@@ -293,6 +313,19 @@ export const Header: React.FC<HeaderProps> = ({
                     </span>
                     <span className="text-emerald-400 font-bold">Canlı Bağlantı</span>
                   </div>
+
+                  {/* Hard Refresh Button for Android & Mobile */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      handleHardRefresh();
+                    }}
+                    className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-yellow-400 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-yellow-500/30 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-yellow-400" />
+                    <span>Önbelleği Temizle & Yenile (Android)</span>
+                  </button>
 
                   {/* GitHub Pages ZIP Button */}
                   <a
