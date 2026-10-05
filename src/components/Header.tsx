@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AkgLogo } from './AkgLogo';
-import { PWAInstallButton } from './PWAInstallButton';
 import { UserSession } from '../types/cmms';
 import {
   Menu,
@@ -203,9 +202,6 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* PWA Install Button (Android / iOS) */}
-          <PWAInstallButton compact={true} />
-
           {/* Modern Sarı-Siyah Açılır Menü Butonu */}
           <div className="relative" ref={dropdownRef}>
             <button
@@ -310,16 +306,6 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* Dropdown Footer: Live Google E-Tablo Status + Quick ZIP Export + Logout */}
                 <div className="p-3 bg-[#131b2a] border-t border-slate-700/80 space-y-2">
-                  <div className="bg-[#192437] p-2.5 rounded-xl border border-yellow-500/30 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <span className="text-xs font-black text-white block truncate">Uygulama Olarak Kullan</span>
-                      <span className="text-[10px] text-slate-400 block truncate">Android & iOS Ana Ekrana Ekle</span>
-                    </div>
-                    <div className="shrink-0">
-                      <PWAInstallButton compact={true} />
-                    </div>
-                  </div>
-
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold px-1">
                     <span className="flex items-center gap-1.5">
                       <FileSpreadsheet className="w-3.5 h-3.5 text-yellow-400" />
