@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserSession, Machine, MaintenanceTemplate, MaintenanceRecord } from '../types/cmms';
 import { getWeekKey } from '../services/cmmsApi';
+import { uploadQueueService, QueuedRecord } from '../services/uploadQueue';
 import {
   Wrench,
   AlertTriangle,
@@ -32,11 +33,42 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const operatorName = user.operator || user.name || user.fullName || 'Operatör';
   const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'completed' | 'hasRed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [uploadQueue, setUploadQueue] = useState<QueuedRecord[]>(() => uploadQueueService.getQueue());
 
-  // Calculate current week statistics
+  useEffect(() => {
+    return uploadQueueService.subscribe(setUploadQueue);
+  }, []);
+
+  // Calculate current week statistics (incorporates local background queue immediately for 0ms lag)
   const currentWeekRecords = useMemo(() => {
-    return records.filter((r) => r.weekKey === currentWeek);
-  }, [records, currentWeek]);
+    const fromApi = records.filter((r) => r.weekKey === currentWeek);
+    const fromQueue = uploadQueue.map((q) => ({
+      recordId: q.id,
+      machineId: q.machineId,
+      machineName: q.machineName,
+      templateId: q.templateId,
+      task: q.task,
+      measuredValue: q.measuredValue,
+      result: q.result,
+      description: q.description,
+      operator: q.operator,
+      operatorRole: q.operatorRole,
+      proofImageUrl: q.proofImageUrl,
+      weekKey: currentWeek,
+      createdAt: new Date(q.timestamp).toISOString(),
+      date: new Date(q.timestamp).toLocaleDateString('tr-TR'),
+      time: new Date(q.timestamp).toLocaleTimeString('tr-TR'),
+    } as MaintenanceRecord));
+
+    const existingKeys = new Set(
+      fromApi.map((r) => `${r.machineId || r.machineName}_${r.templateId}`)
+    );
+    const nonDuplicatedQueue = fromQueue.filter(
+      (q) => !existingKeys.has(`${q.machineId || q.machineName}_${q.templateId}`)
+    );
+
+    return [...fromApi, ...nonDuplicatedQueue];
+  }, [records, currentWeek, uploadQueue]);
 
   const activeTemplates = useMemo(() => {
     return templates.filter((t) => t.active);

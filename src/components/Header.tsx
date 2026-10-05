@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AkgLogo } from './AkgLogo';
 import { UserSession } from '../types/cmms';
+import { uploadQueueService, QueuedRecord } from '../services/uploadQueue';
+import { UploadQueueModal } from './UploadQueueModal';
 import {
   Menu,
   X,
@@ -21,6 +23,7 @@ import {
   Layers,
   FileSpreadsheet,
   ArrowRight,
+  CloudUpload,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -49,7 +52,16 @@ export const Header: React.FC<HeaderProps> = ({
   recordsCount = 0,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [queueModalOpen, setQueueModalOpen] = useState(false);
+  const [queue, setQueue] = useState<QueuedRecord[]>(() => uploadQueueService.getQueue());
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Subscribe to real-time background upload queue
+  useEffect(() => {
+    return uploadQueueService.subscribe((updated) => {
+      setQueue(updated);
+    });
+  }, []);
 
   const isAdmin = String(user?.role || '').toLowerCase().includes('admin');
   const operatorName = user?.operator || user?.name || user?.fullName || 'Operatör';
@@ -181,6 +193,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               <span>{redCount} RED</span>
+            </button>
+          )}
+
+          {/* AppSheet Tarzı Bekleyen Kayıtlar Rozeti: (3) */}
+          {queue.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setQueueModalOpen(true)}
+              title={`${queue.length} kayıt arka planda yükleniyor - Tıklayıp listeyi görün`}
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-400/60 text-xs sm:text-sm font-black transition-all shadow-md active:scale-95 cursor-pointer animate-pulse"
+            >
+              <CloudUpload className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+              <span>({queue.length})</span>
             </button>
           )}
 
@@ -350,6 +375,13 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* AppSheet Tarzı Kısa ve Öz Bekleyen Yüklemeler Modalı */}
+      <UploadQueueModal
+        isOpen={queueModalOpen}
+        onClose={() => setQueueModalOpen(false)}
+        queue={queue}
+      />
     </header>
   );
 };

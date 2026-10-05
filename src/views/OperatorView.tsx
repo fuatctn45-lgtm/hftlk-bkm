@@ -8,6 +8,7 @@ import {
   DEPARTMENTS,
 } from '../types/cmms';
 import { getWeekKey, cmmsApi } from '../services/cmmsApi';
+import { uploadQueueService, QueuedRecord } from '../services/uploadQueue';
 import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { analyzeMaintenancePhoto } from '../services/geminiService';
 import { extractDriveFileId } from './RedListView';
@@ -231,10 +232,25 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const isAdmin = String(user.role || '').toLowerCase().includes('admin');
   const currentWeek = getWeekKey();
 
+  // Real-time background upload queue
+  const [uploadQueue, setUploadQueue] = useState<QueuedRecord[]>(() => uploadQueueService.getQueue());
+  useEffect(() => {
+    return uploadQueueService.subscribe(setUploadQueue);
+  }, []);
+
   // Helper: map a machine & template to its status for current week
   const getTaskStatus = (machineId: string, templateId: string): 'bekleyen' | 'tamamlanan' | 'red' => {
+    // 1. Check pending items in local upload queue first (0ms latency!)
+    const queued = uploadQueue.find(
+      (q) => (q.machineId === machineId || q.machineName === machineId) && q.templateId === templateId
+    );
+    if (queued) {
+      return queued.result === 'RED' ? 'red' : 'tamamlanan';
+    }
+
+    // 2. Check synced records from cloud
     const record = records.find(
-      (r) => r.machineId === machineId && r.templateId === templateId && r.weekKey === currentWeek
+      (r) => (r.machineId === machineId || r.machineName === machineId) && r.templateId === templateId && r.weekKey === currentWeek
     );
     if (!record) return 'bekleyen';
     return record.result === 'RED' ? 'red' : 'tamamlanan';
@@ -623,11 +639,12 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       return;
     }
 
-    setSaveLoading(true);
+    setSaveLoading(false);
     setSaveMessage(null);
 
     try {
-      const res = await cmmsApi.saveRecord({
+      // 1. Immediately enqueue into AppSheet-style background sync queue (0ms wait)
+      const queuedItem = uploadQueueService.enqueue({
         machineId: selectedMachine.id,
         machineName: selectedMachine.machineName,
         templateId: selectedTask.templateId,
@@ -639,48 +656,48 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         operatorRole: user.role || 'operator',
         proofImageUrl: proofImage || undefined,
         photoDataUrl: proofImage || undefined,
-      } as any);
+      });
 
-      if (res.success) {
-        // Cache proof image locally for instant high-speed preview
-        if (proofImage) {
-          try {
-            if (res.recordId) {
-              localStorage.setItem(`proofImg_${res.recordId}`, proofImage);
-            }
-            localStorage.setItem(`proofImg_${selectedMachine.id}_${selectedTask.templateId}`, proofImage);
-            localStorage.setItem(`proofImg_${selectedTask.templateId}`, proofImage);
+      // 2. Cache proof image locally for instant high-speed preview
+      if (proofImage) {
+        try {
+          localStorage.setItem(`proofImg_${queuedItem.id}`, proofImage);
+          localStorage.setItem(`proofImg_${selectedMachine.id}_${selectedTask.templateId}`, proofImage);
+          localStorage.setItem(`proofImg_${selectedTask.templateId}`, proofImage);
 
-            const map = JSON.parse(localStorage.getItem('cmms_photos_map') || '{}');
-            if (res.recordId) map[res.recordId] = proofImage;
-            map[`${selectedMachine.id}_${selectedTask.templateId}`] = proofImage;
-            map[selectedTask.templateId] = proofImage;
-            localStorage.setItem('cmms_photos_map', JSON.stringify(map));
-          } catch {}
-        }
-
-        setSaveMessage({
-          type: 'success',
-          text: `Bakım kontrolü başarıyla kaydedildi! (${result})`,
-        });
-        onRecordSaved();
-
-        // Find next pending task on this machine
-        const currentIndex = machineTasks.findIndex((t) => t.templateId === selectedTask.templateId);
-        const nextPendingTask = machineTasks.find(
-          (t, idx) => idx > currentIndex && getTaskStatus(selectedMachine.id, t.templateId) === 'bekleyen'
-        );
-
-        setTimeout(() => {
-          if (nextPendingTask) {
-            handleOpenTask(nextPendingTask);
-          } else {
-            setSubStep('tasks');
-          }
-        }, 1000);
+          const map = JSON.parse(localStorage.getItem('cmms_photos_map') || '{}');
+          map[queuedItem.id] = proofImage;
+          map[`${selectedMachine.id}_${selectedTask.templateId}`] = proofImage;
+          map[selectedTask.templateId] = proofImage;
+          localStorage.setItem('cmms_photos_map', JSON.stringify(map));
+        } catch {}
       }
+
+      playScanSuccessSound();
+      setSaveMessage({
+        type: 'success',
+        text: `Kayıt sıraya alındı ve arka planda aktarılıyor! (${result})`,
+      });
+      onRecordSaved();
+
+      // 3. Find next pending task on this machine (0ms wait, smooth transition)
+      const currentIndex = machineTasks.findIndex((t) => t.templateId === selectedTask.templateId);
+      const nextPendingTask = machineTasks.find(
+        (t, idx) =>
+          idx > currentIndex &&
+          t.templateId !== selectedTask.templateId &&
+          getTaskStatus(selectedMachine.id, t.templateId) === 'bekleyen'
+      );
+
+      setTimeout(() => {
+        if (nextPendingTask) {
+          handleOpenTask(nextPendingTask);
+        } else {
+          setSubStep('tasks');
+        }
+      }, 400);
     } catch (err: any) {
-      setSaveMessage({ type: 'error', text: err.message || 'Kayıt sırasında hata oluştu.' });
+      setSaveMessage({ type: 'error', text: err.message || 'Kayıt sıraya eklenirken hata oluştu.' });
     } finally {
       setSaveLoading(false);
     }
