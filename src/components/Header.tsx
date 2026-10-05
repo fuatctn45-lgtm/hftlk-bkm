@@ -130,27 +130,27 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Left: Brand Identity & Active Operator */}
         <div
           onClick={() => handleSelectNav('operator')}
-          className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group select-none min-w-0"
+          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group select-none min-w-0"
         >
-          <div className="bg-yellow-400 text-black rounded-xl p-1 sm:p-1.5 shadow-md shadow-yellow-500/20 group-hover:scale-105 transition-transform shrink-0 border border-yellow-300">
+          <div className="bg-yellow-400 text-black rounded-lg px-1.5 py-0.5 shadow-xs group-hover:scale-102 transition-transform shrink-0 border border-yellow-300 flex items-center justify-center">
             <AkgLogo size="xs" />
           </div>
           <div className="min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="text-sm sm:text-base font-black tracking-tight leading-none text-yellow-400">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs sm:text-sm font-black tracking-tight leading-none text-yellow-400">
                 AKG CMMS
               </span>
-              <span className="hidden xs:inline-block px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-mono font-black bg-yellow-400 text-black">
+              <span className="hidden xs:inline-block px-1 py-0.2 rounded text-[9px] font-mono font-black bg-yellow-400 text-black leading-none">
                 V5.5.0
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-300 mt-0.5">
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-300 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
               <span className="font-semibold truncate max-w-[95px] xs:max-w-[130px] sm:max-w-xs text-slate-200">
                 {operatorName}
               </span>
               {isAdmin && (
-                <span className="bg-yellow-400 text-black font-black text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 rounded uppercase tracking-wider shrink-0">
+                <span className="bg-yellow-400 text-black font-black text-[8px] px-1 py-0.2 rounded uppercase tracking-wider shrink-0 leading-none">
                   YÖNETİCİ
                 </span>
               )}

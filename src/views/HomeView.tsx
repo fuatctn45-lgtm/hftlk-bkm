@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { UserSession, Machine, MaintenanceTemplate, MaintenanceRecord } from '../types/cmms';
 import { getWeekKey } from '../services/cmmsApi';
 import { AudioPlayerButton } from '../components/AudioPlayerButton';
@@ -11,16 +11,7 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  ShieldAlert,
-  Search,
-  CheckCircle,
-  Filter,
-  Layers,
-  ChevronRight,
   TrendingUp,
-  Cpu,
-  Activity,
-  FileCheck,
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -42,10 +33,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const isAdmin = String(user.role || '').toLowerCase().includes('admin');
   const operatorName = user.operator || user.name || user.fullName || 'Operatör';
 
-  // Machine quick filter
-  const [machineSearch, setMachineSearch] = useState('');
-  const [machineStatusFilter, setMachineStatusFilter] = useState<'all' | 'pending' | 'completed' | 'hasRed'>('all');
-
   // Calculate current week statistics
   const currentWeekRecords = useMemo(() => {
     return records.filter((r) => r.weekKey === currentWeek);
@@ -62,72 +49,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const pendingCount = Math.max(0, totalPlanned - completed);
   const completionRate = totalPlanned > 0 ? Math.round((completed / totalPlanned) * 100) : 0;
 
-  // Machine readiness list (ONLY machines with defined maintenance tasks)
-  const machineStatusList = useMemo(() => {
-    return machines
-      .map((m) => {
-        const machineTemplates = activeTemplates.filter(
-          (t) => t.machineId === m.id || t.machineName === m.machineName
-        );
-        const machineRecords = currentWeekRecords.filter(
-          (r) => r.machineId === m.id || r.machineName === m.machineName
-        );
-
-        const machineTotal = machineTemplates.length;
-        const machineDone = machineRecords.length;
-        const machineRed = machineRecords.filter((r) => r.result === 'RED').length;
-
-        let status: 'completed' | 'pending' | 'hasRed' | 'noTasks' = 'pending';
-        if (machineRed > 0) {
-          status = 'hasRed';
-        } else if (machineTotal > 0 && machineDone >= machineTotal) {
-          status = 'completed';
-        } else if (machineTotal === 0) {
-          status = 'noTasks';
-        }
-
-        return {
-          ...m,
-          totalTasks: machineTotal,
-          doneTasks: machineDone,
-          redTasks: machineRed,
-          status,
-        };
-      })
-      .filter((m) => m.totalTasks > 0);
-  }, [machines, activeTemplates, currentWeekRecords]);
-
-  const filteredMachines = useMemo(() => {
-    return machineStatusList.filter((m) => {
-      const codeStr = m.machineCode || m.code || '';
-      const matchesSearch =
-        m.machineName.toLowerCase().includes(machineSearch.toLowerCase()) ||
-        codeStr.toLowerCase().includes(machineSearch.toLowerCase());
-
-      if (!matchesSearch) return false;
-      if (machineStatusFilter === 'all') return true;
-      if (machineStatusFilter === 'pending') return m.status === 'pending';
-      if (machineStatusFilter === 'completed') return m.status === 'completed';
-      if (machineStatusFilter === 'hasRed') return m.status === 'hasRed';
-      return true;
-    });
-  }, [machineStatusList, machineSearch, machineStatusFilter]);
-
   // Spoken summary for TTS
-  const spokenBriefing = `Merhaba ${operatorName}. AKG Haftalık Bakım Yönetim Sistemi V5.5.0'a hoş geldiniz. ${currentWeek} dönemi için ${totalPlanned} kontrol maddesi planlanmıştır. Şu ana kadar ${completed} bakım tamamlandı. Başarı oranı yüzde ${completionRate}. Sistemde ${redCount} adet aktif kırmızı arıza bulunmaktadır.`;
+  const spokenBriefing = `Merhaba ${operatorName}. AKG Haftalık Bakım Yönetim Sistemi'ne hoş geldiniz. ${currentWeek} dönemi için ${totalPlanned} kontrol maddesi planlanmıştır. Şu ana kadar ${completed} bakım tamamlandı. Başarı oranı yüzde ${completionRate}. Sistemde ${redCount} adet aktif kırmızı arıza bulunmaktadır.`;
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4 sm:space-y-6">
       {/* Industrial Hero Command Banner (Sarı - Siyah Konsept) */}
-      <div className="bg-gradient-to-br from-black via-[#121622] to-[#1a2232] text-white rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl relative overflow-hidden border border-yellow-500/40">
+      <div className="bg-gradient-to-br from-black via-[#10141e] to-[#182030] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden border border-yellow-500/40">
         <div className="relative z-10 max-w-3xl">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-            <span className="px-2 py-0.5 bg-yellow-400/20 text-yellow-300 rounded-md text-[11px] sm:text-xs font-mono font-black border border-yellow-400/40">
+            <span className="px-2.5 py-0.5 bg-yellow-400/20 text-yellow-300 rounded-md text-[11px] sm:text-xs font-mono font-black border border-yellow-400/40">
               Dönem: {currentWeek}
             </span>
-            <span className="px-2 py-0.5 bg-yellow-400 text-black rounded-md text-[11px] sm:text-xs font-black flex items-center gap-1.5 shadow-sm">
+            <span className="px-2.5 py-0.5 bg-yellow-400 text-black rounded-md text-[11px] sm:text-xs font-black flex items-center gap-1.5 shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-              <span>V5.5.0 SARI-SİYAH</span>
+              <span>AKG V5.5.0</span>
             </span>
           </div>
 
@@ -136,7 +72,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-4 sm:mb-6 font-normal max-w-2xl">
             AKG Endüstriyel Soğutma Sistemleri haftalık koruyucu bakım kontrollerinizi tamamlayabilir,
-            arızaları fotoğraflarla raporlayabilir ve yapay zeka destekli teknik kılavuzdan yararlanabilirsiniz.
+            arızaları fotoğraflarla raporlayabilir ve anlık analiz raporlarını inceleyebilirsiniz.
           </p>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -356,149 +292,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Machine Readiness & Inspection Matrix (Live Floor Status - Sarı-Siyah) */}
-      <div className="bg-[#121824] rounded-2xl border border-slate-800 shadow-md overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0e131d]">
-          <div>
-            <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-yellow-400" />
-              <span>Saha Makine Bakım Durumu</span>
-              <span className="text-xs text-yellow-400 font-bold">({machineStatusList.length} makine)</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Bakımı tanımlı makinelerin anlık tamamlanma ve arıza durumu
-            </p>
-          </div>
-
-          {/* Search & Filter Bar */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[180px] flex-1 sm:flex-none">
-              <input
-                type="text"
-                value={machineSearch}
-                onChange={(e) => setMachineSearch(e.target.value)}
-                placeholder="Makine ara..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#0b0f17] border border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-yellow-400"
-              />
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-            </div>
-
-            <div className="flex items-center gap-1 bg-[#0b0f17] p-1 rounded-xl text-xs font-semibold border border-slate-800">
-              <button
-                type="button"
-                onClick={() => setMachineStatusFilter('all')}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  machineStatusFilter === 'all' ? 'bg-yellow-400 text-black shadow-xs font-black' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Tümü
-              </button>
-              <button
-                type="button"
-                onClick={() => setMachineStatusFilter('pending')}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  machineStatusFilter === 'pending' ? 'bg-yellow-400 text-black shadow-xs font-black' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Bekleyen
-              </button>
-              <button
-                type="button"
-                onClick={() => setMachineStatusFilter('hasRed')}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  machineStatusFilter === 'hasRed' ? 'bg-rose-600 text-white shadow-xs font-black' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                RED Arıza
-              </button>
-              <button
-                type="button"
-                onClick={() => setMachineStatusFilter('completed')}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  machineStatusFilter === 'completed' ? 'bg-emerald-500 text-black shadow-xs font-black' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Tamamlandı
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Machine Table / Cards */}
-        <div className="divide-y divide-slate-800/80 max-h-[380px] overflow-y-auto">
-          {filteredMachines.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400 font-medium">
-              Arama kriterlerine uygun makine bulunamadı.
-            </div>
-          ) : (
-            filteredMachines.map((m) => {
-              const percent = m.totalTasks > 0 ? Math.round((m.doneTasks / m.totalTasks) * 100) : 0;
-
-              return (
-                <div
-                  key={m.id}
-                  className="p-3 sm:px-5 flex items-center justify-between gap-3 hover:bg-[#18202e] transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] sm:text-xs font-bold text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded-md border border-yellow-400/30 shrink-0">
-                        {m.machineCode || m.code || m.id}
-                      </span>
-                      <h4 className="text-xs sm:text-sm font-bold text-white truncate">
-                        {m.machineName}
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1">
-                      <span>{m.totalTasks} Görev</span>
-                      <span>·</span>
-                      <span>{m.doneTasks} Yapıldı</span>
-                      {m.redTasks > 0 && (
-                        <>
-                          <span>·</span>
-                          <span className="text-rose-400 font-bold flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3 text-rose-400" />
-                            {m.redTasks} RED
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress bar & Action */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="hidden sm:block w-24 text-right">
-                      <div className="text-xs font-mono font-bold text-yellow-400">%{percent}</div>
-                      <div className="w-full bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            m.redTasks > 0
-                              ? 'bg-rose-500'
-                              : percent === 100
-                              ? 'bg-emerald-400'
-                              : 'bg-yellow-400'
-                          }`}
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('operator')}
-                      className="px-2.5 py-1.5 text-xs font-black rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black transition-colors flex items-center gap-1 cursor-pointer shadow-sm shadow-yellow-500/20"
-                    >
-                      <span>Bakıma Git</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-black" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
       </div>
     </div>
   );

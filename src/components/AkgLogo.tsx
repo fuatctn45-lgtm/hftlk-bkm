@@ -2,11 +2,20 @@ import React from 'react';
 
 interface AkgLogoProps {
   className?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export const AkgLogo: React.FC<AkgLogoProps> = ({ className = '', size = 'md' }) => {
-  const heightClass = size === 'sm' ? 'h-7' : size === 'lg' ? 'h-14' : 'h-10';
+  const heightClass =
+    size === 'xxs'
+      ? 'h-3.5'
+      : size === 'xs'
+      ? 'h-4.5 sm:h-5'
+      : size === 'sm'
+      ? 'h-6'
+      : size === 'lg'
+      ? 'h-11'
+      : 'h-8';
 
   return (
     <div className={`flex items-center gap-2 select-none ${className}`}>
