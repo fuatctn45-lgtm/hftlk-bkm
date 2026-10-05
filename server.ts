@@ -596,6 +596,50 @@ async function startServer() {
     next();
   });
 
+  // Explicit PWA Endpoints: Must return correct MIME types for Android & iOS PWA verification
+  app.get(['/sw.js', '/registerSW.js'], (req, res) => {
+    const swPath = path.resolve(process.cwd(), 'public/sw.js');
+    if (fs.existsSync(swPath)) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.sendFile(swPath);
+    }
+    const distSw = path.resolve(process.cwd(), 'dist/sw.js');
+    if (fs.existsSync(distSw)) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.sendFile(distSw);
+    }
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.send('self.addEventListener("install", () => self.skipWaiting()); self.addEventListener("activate", () => self.clients.claim());');
+  });
+
+  app.get(['/manifest.webmanifest', '/manifest.json'], (req, res) => {
+    const manifestPath = path.resolve(process.cwd(), 'public/manifest.webmanifest');
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    if (fs.existsSync(manifestPath)) {
+      return res.sendFile(manifestPath);
+    }
+    const distManifest = path.resolve(process.cwd(), 'dist/manifest.webmanifest');
+    if (fs.existsSync(distManifest)) {
+      return res.sendFile(distManifest);
+    }
+    res.json({
+      name: 'AKG CMMS Haftalık Bakım',
+      short_name: 'AKG Bakım',
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#101828',
+      theme_color: '#101828',
+    });
+  });
+
+  // Serve public directory statically so icons and PWA assets are never intercepted by SPA fallback
+  app.use(express.static(path.resolve(process.cwd(), 'public')));
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
