@@ -109,7 +109,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
     ).length;
     const hasRed = mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
     const isAllDone = mTasks.length > 0 && completedCount >= mTasks.length;
-    const percent = mTasks.length > 0 ? Math.round((completedCount / mTasks.length) * 100) : 0;
 
     return (
       <div
@@ -118,7 +117,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           if (hasRed) onNavigate('redList');
           else onNavigate('operator');
         }}
-        className={`group w-full p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 active:scale-[0.99] hover:shadow-md ${
+        className={`group w-full p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer shadow-xs flex items-center justify-between gap-3 active:scale-[0.99] hover:shadow-md ${
           hasRed
             ? 'bg-rose-950/25 border-rose-500/70 hover:border-rose-400 hover:bg-rose-950/35'
             : isAllDone
@@ -126,19 +125,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
             : 'bg-[#1b263b] border-slate-700/80 hover:border-yellow-400 hover:bg-[#202e47]'
         }`}
       >
-        <div className="min-w-0 flex-1 space-y-2">
-          {/* Makine İsmi & Masraf Merkezi */}
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1 space-y-2.5">
+          {/* Makine İsmi (Masraf merkezi / kod etiketi kaldırıldı) */}
+          <div className="flex items-center gap-2">
             <h3 className="text-base sm:text-lg font-black text-yellow-400 group-hover:text-yellow-300 transition-colors">
               {m.machineName}
             </h3>
-            <span className="text-[11px] font-mono font-bold bg-[#141d2d] text-slate-300 px-2 py-0.5 rounded border border-slate-700">
-              {m.costCenter || m.code || m.id}
-            </span>
           </div>
 
-          {/* Resimdeki Gibi Numaralı Adım Kutuları (Hangi Sıradaki Bakımlar Bitmiş Belli Olsun) */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          {/* Numaralı Adım Kutuları */}
+          <div className="flex flex-wrap items-center gap-1.5">
             {mTasks.map((t, idx) => {
               const st = getTaskStatus(m.id, t.templateId);
               const bg =
@@ -159,35 +155,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
               );
             })}
           </div>
-
-          {/* İlerleme Bilgisi */}
-          <div className="text-[11px] text-slate-400 font-semibold flex items-center gap-2 pt-0.5">
-            <span>İlerleme ({completedCount}/{mTasks.length})</span>
-            <span>•</span>
-            <span className={hasRed ? 'text-rose-400 font-bold' : isAllDone ? 'text-emerald-400 font-bold' : 'text-yellow-400 font-bold'}>
-              %{percent}
-            </span>
-            <span>•</span>
-            <span className={hasRed ? 'text-rose-400' : isAllDone ? 'text-emerald-400' : 'text-slate-300'}>
-              {hasRed ? 'RED Arıza' : isAllDone ? 'Tamamlandı' : 'Devam Ediyor'}
-            </span>
-          </div>
         </div>
 
-        {/* Sağ: Hızlı Aksiyon Butonu */}
-        <div className="shrink-0 flex items-center justify-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-          <div
-            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-xs transition-transform group-hover:scale-102 ${
-              hasRed
-                ? 'bg-rose-600 text-white'
-                : isAllDone
-                ? 'bg-emerald-500 text-black'
-                : 'bg-yellow-400 hover:bg-yellow-300 text-black'
-            }`}
-          >
-            <span>{hasRed ? 'Arızayı Gör' : isAllDone ? 'Görüntüle' : 'Bakıma Başla'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </div>
+        {/* Sağ Taraf: Buton kaldırıldı, tıklandığını gösteren zarif geçiş oku */}
+        <div className="shrink-0 flex items-center text-slate-500 group-hover:text-yellow-400 group-hover:translate-x-1 transition-all pl-2">
+          <ArrowRight className="w-5 h-5" />
         </div>
       </div>
     );
