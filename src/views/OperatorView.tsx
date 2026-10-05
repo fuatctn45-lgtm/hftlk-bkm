@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import jsQR from 'jsqr';
 import {
   Machine,
   MaintenanceTemplate,
@@ -97,6 +98,91 @@ function compressImageFile(file: File): Promise<string> {
   });
 }
 
+// Play audio beep sound & trigger haptic feedback on successful scan
+function playScanSuccessSound() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      const ctx = new AudioContextClass();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    }
+    if ('vibrate' in navigator) {
+      navigator.vibrate([100]);
+    }
+  } catch {}
+}
+
+// Normalize text for robust QR matching across Turkish characters, symbols, and cases
+export function normalizeQrText(text: string): string {
+  return (text || '')
+    .trim()
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/ı/g, 'i')
+    .replace(/Ğ/g, 'g')
+    .replace(/ğ/g, 'g')
+    .replace(/Ü/g, 'u')
+    .replace(/ü/g, 'u')
+    .replace(/Ş/g, 's')
+    .replace(/ş/g, 's')
+    .replace(/Ö/g, 'o')
+    .replace(/ö/g, 'o')
+    .replace(/Ç/g, 'c')
+    .replace(/ç/g, 'c')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+// Check whether scanned QR code matches the selected machine
+export function isQrMatchMachine(scanned: string, machine?: Machine | null): boolean {
+  if (!scanned || !machine) return false;
+
+  const normScan = normalizeQrText(scanned);
+  const normName = normalizeQrText(machine.machineName);
+  const normCode = normalizeQrText(machine.code || machine.machineCode || '');
+  const normCost = normalizeQrText(machine.costCenter || '');
+  const normId = normalizeQrText(machine.id);
+
+  // 1. Direct or substring matching
+  if (normName && (normScan.includes(normName) || normName.includes(normScan))) return true;
+  if (normCode && (normScan.includes(normCode) || normCode.includes(normScan))) return true;
+  if (normCost && (normScan.includes(normCost) || normCost.includes(normScan))) return true;
+  if (normId && normScan.includes(normId)) return true;
+
+  // 2. Numeric Cost Center matching (e.g. '351010-1' vs '12-351010-Yag Alma (Alu)')
+  const scanNumbers = (scanned.match(/\d{4,}/g) || []);
+  const costNumbers = ((machine.costCenter || '') + ' ' + (machine.machineCode || '')).match(/\d{4,}/g) || [];
+  for (const sn of scanNumbers) {
+    if (costNumbers.some((cn) => cn === sn || cn.includes(sn) || sn.includes(cn))) {
+      return true;
+    }
+  }
+
+  // 3. Significant word token matching (e.g. YAĞ, ALMA, EMO)
+  const nameWords = (machine.machineName || '')
+    .split(/[\s\-_/]+/)
+    .map(normalizeQrText)
+    .filter((w) => w.length >= 3);
+
+  if (nameWords.length > 0) {
+    const matchCount = nameWords.filter((w) => normScan.includes(w)).length;
+    if (matchCount >= Math.min(2, nameWords.length)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export const OperatorView: React.FC<OperatorViewProps> = ({
   user,
   machines,
@@ -114,8 +200,11 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // QR Scanning state
   const [qrScanning, setQrScanning] = useState(false);
   const [qrError, setQrError] = useState<string | null>(null);
+  const [qrSuccessMessage, setQrSuccessMessage] = useState<string | null>(null);
   const [wrongQrModal, setWrongQrModal] = useState<{ expected: string; scanned: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scanLoopRef = useRef<number | null>(null);
+  const qrPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Control / Form state
   const [measuredValue, setMeasuredValue] = useState('');
@@ -279,57 +368,188 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       setSubStep('qr');
       setQrError(null);
       setQrScanning(true);
+      setQrSuccessMessage(null);
     }
   };
 
-  // Camera stream cleanup
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    if (subStep === 'qr' && qrScanning) {
-      navigator.mediaDevices
-        ?.getUserMedia({ video: { facingMode: 'environment' } })
-        .then((s) => {
-          stream = s;
-          if (videoRef.current) {
-            videoRef.current.srcObject = s;
-            videoRef.current.play();
-          }
-        })
-        .catch((err) => {
-          console.warn('Camera access error:', err);
-          setQrError('Kamera başlatılamadı. Doğrudan QR Doğrula butonunu kullanabilirsiniz.');
-        });
+  // Handle scanned QR code validation
+  const handleVerifyQrCode = (scannedCode: string) => {
+    if (!selectedMachine) return;
+    const trimmed = scannedCode.trim();
+    if (!trimmed) return;
+
+    if (isQrMatchMachine(trimmed, selectedMachine)) {
+      playScanSuccessSound();
+      setQrScanning(false);
+      setQrSuccessMessage(`QR Doğrulandı: ${selectedMachine.machineName} ✔`);
+      setTimeout(() => {
+        setQrSuccessMessage(null);
+        setSubStep('tasks');
+      }, 700);
+    } else {
+      setWrongQrModal({
+        expected: `${selectedMachine.machineName} (${selectedMachine.costCenter || selectedMachine.code || selectedMachine.id})`,
+        scanned: trimmed,
+      });
     }
+  };
+
+  // Real-time camera stream QR decoding loop
+  useEffect(() => {
+    if (subStep !== 'qr' || !qrScanning || !selectedMachine) return;
+
+    let stream: MediaStream | null = null;
+    let isActive = true;
+
+    const startScanner = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+
+        if (!isActive) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute('playsinline', 'true');
+          await videoRef.current.play();
+        }
+
+        // Offscreen canvas for decoding
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        // Native BarcodeDetector if available
+        const barcodeDetector =
+          typeof window !== 'undefined' && 'BarcodeDetector' in window
+            ? new (window as any).BarcodeDetector({ formats: ['qr_code'] })
+            : null;
+
+        let frameCounter = 0;
+
+        const scanFrame = async () => {
+          if (!isActive || !videoRef.current) return;
+
+          const video = videoRef.current;
+          if (video.readyState >= 2) {
+            frameCounter++;
+            // Scan every 2nd frame (~15 fps) for optimal performance
+            if (frameCounter % 2 === 0) {
+              const width = video.videoWidth;
+              const height = video.videoHeight;
+
+              if (width > 0 && height > 0 && ctx) {
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(video, 0, 0, width, height);
+
+                let detectedValue: string | null = null;
+
+                // 1. Try native BarcodeDetector
+                if (barcodeDetector) {
+                  try {
+                    const barcodes = await barcodeDetector.detect(canvas);
+                    if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                      detectedValue = barcodes[0].rawValue;
+                    }
+                  } catch {}
+                }
+
+                // 2. Fallback to jsQR
+                if (!detectedValue) {
+                  try {
+                    const imgData = ctx.getImageData(0, 0, width, height);
+                    const code = jsQR(imgData.data, width, height, {
+                      inversionAttempts: 'dontInvert',
+                    });
+                    if (code && code.data) {
+                      detectedValue = code.data;
+                    }
+                  } catch {}
+                }
+
+                if (detectedValue && isActive) {
+                  handleVerifyQrCode(detectedValue);
+                  return; // Stop scanning loop on detection
+                }
+              }
+            }
+          }
+
+          scanLoopRef.current = requestAnimationFrame(scanFrame);
+        };
+
+        scanLoopRef.current = requestAnimationFrame(scanFrame);
+      } catch (err: any) {
+        console.warn('Camera error:', err);
+        setQrError('Kamera başlatılamadı. Lütfen kamera izinlerini kontrol ediniz veya alttaki "Fotoğraftan QR Oku" butonunu kullanınız.');
+      }
+    };
+
+    startScanner();
 
     return () => {
+      isActive = false;
+      if (scanLoopRef.current) {
+        cancelAnimationFrame(scanLoopRef.current);
+      }
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
     };
-  }, [subStep, qrScanning]);
+  }, [subStep, qrScanning, selectedMachine]);
 
-  const handleSimulateQrScan = (scannedCode: string) => {
-    if (!selectedMachine) return;
-    const validCodes = [
-      selectedMachine.id,
-      selectedMachine.code,
-      selectedMachine.machineCode,
-      selectedMachine.machineName,
-    ].filter(Boolean);
+  // Decode QR code from captured photo or uploaded file
+  const handleQrPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const isMatch = validCodes.some((code) =>
-      code?.toLowerCase().includes(scannedCode.toLowerCase()) ||
-      scannedCode.toLowerCase().includes(code?.toLowerCase() || '')
-    );
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
 
-    if (isMatch) {
-      setSubStep('tasks');
-    } else {
-      setWrongQrModal({
-        expected: `${selectedMachine.machineName} (${selectedMachine.code || selectedMachine.id})`,
-        scanned: scannedCode,
-      });
-    }
+          // 1. Try native BarcodeDetector
+          if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+            try {
+              const bd = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+              const codes = await bd.detect(canvas);
+              if (codes && codes.length > 0 && codes[0].rawValue) {
+                handleVerifyQrCode(codes[0].rawValue);
+                return;
+              }
+            } catch {}
+          }
+
+          // 2. jsQR
+          const imgData = ctx.getImageData(0, 0, img.width, img.height);
+          const code = jsQR(imgData.data, img.width, img.height, {
+            inversionAttempts: 'attemptBoth',
+          });
+          if (code && code.data) {
+            handleVerifyQrCode(code.data);
+            return;
+          }
+
+          alert('Fotoğrafta geçerli bir QR kod okunamadı. Lütfen etiketi net ve aydınlık olarak tekrar çekiniz.');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   // Select a task to perform control
@@ -800,16 +1020,24 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           <div>
             <h2 className="text-lg font-black text-white">Makine QR Kodunu Okutun</h2>
             <p className="text-xs text-slate-400 mt-1">
-              Doğru makinenin başında olduğunuzu teyit etmek için makine üzerindeki QR etiketi okutunuz.
+              Doğru makinenin başında olduğunuzu teyit etmek için makine üzerindeki sarı QR etiketini okutunuz.
             </p>
           </div>
 
           <div className="bg-[#0b0f17] border border-yellow-500/30 p-3 rounded-xl text-left text-xs space-y-1">
-            <div className="text-yellow-400 font-extrabold">{selectedMachine?.machineName}</div>
+            <div className="text-yellow-400 font-extrabold text-sm">{selectedMachine?.machineName}</div>
             <div className="text-slate-400 font-mono text-[11px]">
-              Kod: {selectedMachine?.costCenter || selectedMachine?.code || selectedMachine?.id}
+              Etiket / Kod: {selectedMachine?.costCenter || selectedMachine?.code || selectedMachine?.id}
             </div>
           </div>
+
+          {/* Success Banner when scanned */}
+          {qrSuccessMessage && (
+            <div className="p-3 bg-emerald-500 text-black font-black text-xs rounded-xl text-center flex items-center justify-center gap-2 animate-bounce shadow-lg">
+              <CheckCircle className="w-4 h-4 text-black" />
+              <span>{qrSuccessMessage}</span>
+            </div>
+          )}
 
           {/* QR Viewfinder Container with Yellow Laser */}
           <div className="relative aspect-square max-w-[260px] mx-auto rounded-3xl overflow-hidden bg-black border-4 border-yellow-400/50 shadow-inner flex items-center justify-center">
@@ -818,27 +1046,48 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             <div className="absolute inset-x-0 h-1 bg-yellow-400 shadow-[0_0_15px_#facc15] animate-scan-sweep pointer-events-none" />
           </div>
 
+          <p className="text-[11px] text-slate-400 font-medium">
+            Kamerayı etikete doğrultun; QR kod algılandığında otomatik olarak kontrollere geçilecektir.
+          </p>
+
           {qrError && (
             <div className="text-[11px] text-amber-300 bg-amber-950/40 p-2.5 rounded-xl border border-amber-800/60">
               {qrError}
             </div>
           )}
 
-          {/* Fast Verification Buttons */}
-          <div className="space-y-2 pt-2">
-            <button
-              type="button"
-              onClick={() => handleSimulateQrScan(selectedMachine?.machineName || '')}
-              className="w-full py-3 px-4 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-sm shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Check className="w-4 h-4 text-black" />
-              <span>QR Doğrulandı & Kontrollere Geç</span>
-            </button>
+          {/* Verification & Action Buttons */}
+          <div className="space-y-2 pt-1">
+            {/* Alternative: Snap / Upload QR Photo if video stream has focus issues */}
+            <label className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">
+              <Camera className="w-4 h-4 text-yellow-400" />
+              <span>QR Fotoğrafı Çek / Yükle</span>
+              <input
+                ref={qrPhotoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleQrPhotoUpload}
+                className="hidden"
+              />
+            </label>
+
+            {/* ONLY FOR ADMINS: Admin Bypass Button */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setSubStep('tasks')}
+                className="w-full py-2.5 px-4 bg-yellow-400/15 hover:bg-yellow-400/25 text-yellow-400 font-black rounded-xl text-xs border border-yellow-500/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              >
+                <span>⚙️ Admin Yetkisi: QR Doğrulamayı Atla</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             <button
               type="button"
               onClick={() => setSubStep('machines')}
-              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold rounded-xl text-xs transition-colors cursor-pointer"
             >
               Farklı Makine Seç
             </button>
@@ -853,16 +1102,29 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <h3 className="text-base font-black text-white">Hatalı Makine Etiketi!</h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 Okutulan QR kodu seçtiğiniz makine ile uyuşmuyor. Lütfen doğru makinenin başında olduğunuzdan emin olun.
               </p>
-              <div className="flex gap-2 pt-2">
+
+              <div className="text-[11px] text-left bg-black/50 p-2.5 rounded-xl border border-slate-800 space-y-1 text-slate-400">
+                <div>
+                  Beklenen: <b className="text-yellow-400 block">{wrongQrModal.expected}</b>
+                </div>
+                <div>
+                  Okutulan: <b className="text-rose-300 block break-all font-mono">{wrongQrModal.scanned}</b>
+                </div>
+              </div>
+
+              <div className="pt-2">
                 <button
                   type="button"
-                  onClick={() => setWrongQrModal(null)}
-                  className="flex-1 py-2.5 bg-yellow-400 text-black font-black rounded-xl text-sm"
+                  onClick={() => {
+                    setWrongQrModal(null);
+                    setQrScanning(true);
+                  }}
+                  className="w-full py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-sm transition-colors cursor-pointer"
                 >
-                  Tekrar Dene
+                  Tekrar Tara
                 </button>
               </div>
             </div>
