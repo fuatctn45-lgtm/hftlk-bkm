@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { UserSession, Machine, MaintenanceTemplate, MaintenanceRecord } from './types/cmms';
-import { getStoredUser, clearStoredUser, cmmsApi, getWeekKey } from './services/cmmsApi';
+import {
+  getStoredUser,
+  clearStoredUser,
+  cmmsApi,
+  getWeekKey,
+  getCachedMachines,
+  getCachedTemplates,
+  getCachedRecords,
+} from './services/cmmsApi';
 import { Header } from './components/Header';
 import { LoginView } from './views/LoginView';
 import { HomeView } from './views/HomeView';
@@ -11,16 +19,63 @@ import { AdminView } from './views/AdminView';
 import { AiAssistantView } from './views/AiAssistantView';
 import { Loader2, LogOut, AlertCircle, X } from 'lucide-react';
 
+function filterMachinesWithTasks(rawMachines: Machine[], rawTemplates: MaintenanceTemplate[]): Machine[] {
+  const activeTemplates = rawTemplates.filter((tmpl) => tmpl.active);
+  const machineNamesWithTasks = new Set(
+    activeTemplates.map((tmpl) => (tmpl.machineName || '').trim().toLowerCase()).filter(Boolean)
+  );
+  const machineIdsWithTasks = new Set(
+    activeTemplates.map((tmpl) => (tmpl.machineId || '').trim().toLowerCase()).filter(Boolean)
+  );
+
+  const withTasks = rawMachines.filter((machine) => {
+    const nameMatch = machine.machineName && machineNamesWithTasks.has(machine.machineName.trim().toLowerCase());
+    const idMatch = machine.id && machineIdsWithTasks.has(machine.id.trim().toLowerCase());
+    const codeMatch = (machine.code || machine.machineCode) && (
+      machineIdsWithTasks.has((machine.code || '').trim().toLowerCase()) ||
+      machineIdsWithTasks.has((machine.machineCode || '').trim().toLowerCase())
+    );
+    return nameMatch || idMatch || codeMatch;
+  });
+
+  // Şablonda tanımlı olup makine listesinde adı geçen makineleri de dahil et
+  for (const tmpl of activeTemplates) {
+    if (!tmpl.machineName) continue;
+    const exists = withTasks.some(
+      (m) => m.machineName.trim().toLowerCase() === tmpl.machineName.trim().toLowerCase()
+    );
+    if (!exists) {
+      withTasks.push({
+        id: tmpl.machineId || tmpl.machineName,
+        machineName: tmpl.machineName,
+        machineCode: tmpl.machineId || '',
+        code: tmpl.machineId || '',
+      });
+    }
+  }
+
+  return withTasks;
+}
+
 export default function App() {
-  const [user, setUser] = useState<UserSession | null>(null);
+  const [user, setUser] = useState<UserSession | null>(getStoredUser);
   const [currentScreen, setCurrentScreen] = useState<
     'home' | 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch'
   >('operator');
-  const [machines, setMachines] = useState<Machine[]>([]);
-  const [allMachines, setAllMachines] = useState<Machine[]>([]);
-  const [templates, setTemplates] = useState<MaintenanceTemplate[]>([]);
-  const [records, setRecords] = useState<MaintenanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Instant SWR state: Initialize immediately from local cache so app opens in 0ms
+  const initialCachedMachines = getCachedMachines();
+  const initialCachedTemplates = getCachedTemplates();
+  const initialCachedRecords = getCachedRecords();
+  const hasCachedData = initialCachedMachines.length > 0 && initialCachedTemplates.length > 0;
+
+  const [machines, setMachines] = useState<Machine[]>(() =>
+    hasCachedData ? filterMachinesWithTasks(initialCachedMachines, initialCachedTemplates) : []
+  );
+  const [allMachines, setAllMachines] = useState<Machine[]>(initialCachedMachines);
+  const [templates, setTemplates] = useState<MaintenanceTemplate[]>(initialCachedTemplates);
+  const [records, setRecords] = useState<MaintenanceRecord[]>(initialCachedRecords);
+  const [loading, setLoading] = useState(!hasCachedData);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -46,41 +101,7 @@ export default function App() {
       setTemplates(rawTemplates);
       setRecords(rawRecords);
 
-      // SADECE BAKIMI OLAN MAKİNELER KALSIN (Kullanıcı Talebi: Görevi olmayan 200+ makineyi temizle)
-      const activeTemplates = rawTemplates.filter((tmpl) => tmpl.active);
-      const machineNamesWithTasks = new Set(
-        activeTemplates.map((tmpl) => (tmpl.machineName || '').trim().toLowerCase()).filter(Boolean)
-      );
-      const machineIdsWithTasks = new Set(
-        activeTemplates.map((tmpl) => (tmpl.machineId || '').trim().toLowerCase()).filter(Boolean)
-      );
-
-      const withTasks = rawMachines.filter((machine) => {
-        const nameMatch = machine.machineName && machineNamesWithTasks.has(machine.machineName.trim().toLowerCase());
-        const idMatch = machine.id && machineIdsWithTasks.has(machine.id.trim().toLowerCase());
-        const codeMatch = (machine.code || machine.machineCode) && (
-          machineIdsWithTasks.has((machine.code || '').trim().toLowerCase()) ||
-          machineIdsWithTasks.has((machine.machineCode || '').trim().toLowerCase())
-        );
-        return nameMatch || idMatch || codeMatch;
-      });
-
-      // Şablonda tanımlı olup makine listesinde adı geçen makineleri de dahil et
-      for (const tmpl of activeTemplates) {
-        if (!tmpl.machineName) continue;
-        const exists = withTasks.some(
-          (m) => m.machineName.trim().toLowerCase() === tmpl.machineName.trim().toLowerCase()
-        );
-        if (!exists) {
-          withTasks.push({
-            id: tmpl.machineId || tmpl.machineName,
-            machineName: tmpl.machineName,
-            machineCode: tmpl.machineId || '',
-            code: tmpl.machineId || '',
-          });
-        }
-      }
-
+      const withTasks = filterMachinesWithTasks(rawMachines, rawTemplates);
       setMachines(withTasks);
       setLastSyncTime(new Date().toLocaleTimeString('tr-TR'));
     } catch (err) {

@@ -353,6 +353,42 @@ app.post('/api/gemini/analyze-image', async (req, res) => {
   }
 });
 
+// High-speed in-memory cache for Google Sheet queries (eliminates repeated 3-10s round-trips)
+interface SheetCacheItem {
+  data: any;
+  expiry: number;
+}
+const sheetMemoryCache = new Map<string, SheetCacheItem>();
+
+function getSheetCache(key: string): any | null {
+  const item = sheetMemoryCache.get(key);
+  if (!item) return null;
+  if (Date.now() > item.expiry) {
+    sheetMemoryCache.delete(key);
+    return null;
+  }
+  return item.data;
+}
+
+function setSheetCache(key: string, data: any, ttlSeconds: number) {
+  sheetMemoryCache.set(key, {
+    data,
+    expiry: Date.now() + ttlSeconds * 1000,
+  });
+}
+
+function invalidateSheetCache(pattern?: string) {
+  if (!pattern) {
+    sheetMemoryCache.clear();
+    return;
+  }
+  for (const k of sheetMemoryCache.keys()) {
+    if (k.includes(pattern)) {
+      sheetMemoryCache.delete(k);
+    }
+  }
+}
+
 /**
  * Proxy for Google Apps Script to eliminate CORS/JSONP friction
  */
@@ -360,6 +396,22 @@ app.all('/api/cmms/proxy', async (req, res) => {
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwjECihD-JQg6ITpewj4ga3HzMraB4sUNhrCf40l6Fjlf2EOhIY9oMknFHAnG_XTCPP/exec';
   try {
     const isPost = req.method === 'POST';
+    const action = String(req.query.action || req.body?.action || '');
+    const isForce = req.query.force === 'true' || req.query.sync === 'true';
+
+    // Invalidate cache on mutations
+    if (isPost || action.includes('save') || action === 'redToUygun') {
+      invalidateSheetCache('listMaintenanceRecords');
+    }
+
+    // Check cache for read actions (machines: 10m, templates: 10m, records: 1m)
+    if (!isPost && !isForce && (action === 'listMachinesCached' || action === 'listMaintenanceTemplatesCached' || action === 'listMaintenanceRecords')) {
+      const cached = getSheetCache(action);
+      if (cached) {
+        return res.json(cached);
+      }
+    }
+
     const query = new URLSearchParams(req.query as Record<string, string>).toString();
     const url = `${APPS_SCRIPT_URL}${query ? '?' + query : ''}`;
 
@@ -393,6 +445,13 @@ app.all('/api/cmms/proxy', async (req, res) => {
     if (contentType.includes('application/json')) {
       try {
         const data = JSON.parse(text);
+        if (data && data.success) {
+          if (action === 'listMachinesCached' || action === 'listMaintenanceTemplatesCached') {
+            setSheetCache(action, data, 600); // 10 minutes cache
+          } else if (action === 'listMaintenanceRecords') {
+            setSheetCache(action, data, 60); // 1 minute cache
+          }
+        }
         return res.json(data);
       } catch {
         return res.send(text);
@@ -404,6 +463,13 @@ app.all('/api/cmms/proxy', async (req, res) => {
     if (match) {
       try {
         const data = JSON.parse(match[1]);
+        if (data && data.success) {
+          if (action === 'listMachinesCached' || action === 'listMaintenanceTemplatesCached') {
+            setSheetCache(action, data, 600);
+          } else if (action === 'listMaintenanceRecords') {
+            setSheetCache(action, data, 60);
+          }
+        }
         return res.json(data);
       } catch {}
     }

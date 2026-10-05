@@ -47,6 +47,37 @@ export function clearStoredUser(): void {
   } catch {}
 }
 
+// Synchronous local cache getters for zero-delay instant render
+export function getCachedMachines(): Machine[] {
+  try {
+    const raw = localStorage.getItem(CACHE_MACHINES_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getCachedTemplates(): MaintenanceTemplate[] {
+  try {
+    const raw = localStorage.getItem(CACHE_TEMPLATES_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getCachedRecords(): MaintenanceRecord[] {
+  try {
+    const raw = localStorage.getItem(CACHE_RECORDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Universal JSONP Caller for Google Apps Script
  * Works 100% on GitHub Pages, file://, and static web hosts without any CORS restrictions.
@@ -407,6 +438,20 @@ export const cmmsApi = {
       imageName = `proof_${Date.now()}.jpg`;
     }
 
+    const updateLocalCache = (recId: string) => {
+      try {
+        const raw = localStorage.getItem(CACHE_RECORDS_KEY);
+        let existing: MaintenanceRecord[] = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(existing)) existing = [];
+        existing.unshift({
+          ...record,
+          recordId: recId,
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(existing));
+      } catch {}
+    };
+
     const isStaticHost = typeof window !== 'undefined' && (
       window.location.hostname.includes('github.io') ||
       window.location.protocol === 'file:'
@@ -423,13 +468,7 @@ export const cmmsApi = {
         });
 
         const recId = res?.recordId || clientRequestId;
-        const existing = await this.getRecords();
-        existing.unshift({
-          ...record,
-          recordId: recId,
-          createdAt: new Date().toISOString(),
-        });
-        localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(existing));
+        updateLocalCache(recId);
         return { success: true, recordId: recId };
       } catch (err) {
         console.error('GitHub Pages form save error:', err);
@@ -453,13 +492,7 @@ export const cmmsApi = {
           const data = await res.json();
           if (data.success) {
             const recId = data.recordId || clientRequestId;
-            const existing = await this.getRecords();
-            existing.unshift({
-              ...record,
-              recordId: recId,
-              createdAt: new Date().toISOString(),
-            });
-            localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(existing));
+            updateLocalCache(recId);
             return { success: true, recordId: recId };
           }
         }
@@ -477,17 +510,12 @@ export const cmmsApi = {
         imageType,
       });
       const recId = res?.recordId || clientRequestId;
+      updateLocalCache(recId);
       return { success: true, recordId: recId };
     } catch (err: any) {
       // Save locally as final fallback
       const recId = `REC-${Date.now().toString().slice(-6)}`;
-      const existing = await this.getRecords();
-      existing.unshift({
-        ...record,
-        recordId: recId,
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(existing));
+      updateLocalCache(recId);
       return { success: true, recordId: recId, message: 'Kayıt yerel olarak yedeklendi.' };
     }
   },
