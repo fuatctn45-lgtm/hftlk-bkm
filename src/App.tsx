@@ -17,6 +17,7 @@ import { RedListView } from './views/RedListView';
 import { ReportsView } from './views/ReportsView';
 import { AdminView } from './views/AdminView';
 import { AiAssistantView } from './views/AiAssistantView';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { Loader2, LogOut, AlertCircle, X } from 'lucide-react';
 
 function filterMachinesWithTasks(rawMachines: Machine[], rawTemplates: MaintenanceTemplate[]): Machine[] {
@@ -300,6 +301,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* PWA Offline Connectivity Indicator */}
+      <OfflineIndicator />
     </div>
   );
 }
