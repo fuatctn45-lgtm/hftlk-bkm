@@ -41,16 +41,6 @@ interface OperatorViewProps {
   onNavigateHome: () => void;
 }
 
-const PRESET_DEFECT_REASONS = [
-  'Yağ / Sıvı Kaçağı',
-  'Aşırı Isınma / Hararet',
-  'Anormal Ses / Titreşim',
-  'Gevşek Cıvata / Bağlantı',
-  'Fiziksel Hasar / Çatlak',
-  'Hava / Basınç Kaçağı',
-  'Aşınmış Kayış / Rulman',
-  'Elektrik Temassızlığı',
-];
 
 export const OperatorView: React.FC<OperatorViewProps> = ({
   user,
@@ -105,8 +95,89 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // Helper: match department config
   const getDepartmentConfig = (sys?: string) => {
     if (!sys) return null;
-    const cleanSys = sys.toUpperCase().trim();
-    return DEPARTMENTS.find((d) => d.deger === cleanSys) || null;
+    const cleanSys = sys.toLocaleUpperCase('tr-TR').trim();
+    return (
+      DEPARTMENTS.find(
+        (d) =>
+          d.deger.toLocaleUpperCase('tr-TR') === cleanSys ||
+          d.ad.toLocaleUpperCase('tr-TR') === cleanSys ||
+          cleanSys.includes(d.kod.toLocaleUpperCase('tr-TR')) ||
+          cleanSys.includes(d.ad.toLocaleUpperCase('tr-TR')) ||
+          cleanSys.includes(d.deger.toLocaleUpperCase('tr-TR'))
+      ) || null
+    );
+  };
+
+  // Helper: compute department style matching the RED fault panel style
+  const getDeptDisplayStyle = (department?: DepartmentConfig | null) => {
+    const code = department?.kod || '';
+    switch (code) {
+      case 'mekanik':
+        return {
+          containerClass: 'bg-cyan-950/40 border-cyan-400/50 shadow-md shadow-cyan-950/30',
+          titleColor: 'text-cyan-300',
+          dotColor: 'bg-[#66FFFF]',
+          badgeClass: 'bg-cyan-400/20 text-cyan-200 border-cyan-400/40',
+          targetColor: 'text-[#66FFFF]',
+          cardBgClass: 'bg-cyan-950/25 hover:bg-cyan-950/40 border-cyan-500/40 hover:border-cyan-400 shadow-md shadow-cyan-950/20',
+          stepNumberClass: 'bg-cyan-950/80 text-cyan-300 border-cyan-400/50',
+          btnClass: 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-sm shadow-cyan-500/20',
+          inputWrapperClass: 'bg-cyan-950/30 border-cyan-400/40',
+          inputLabelColor: 'text-cyan-300',
+          inputBadgeClass: 'bg-cyan-400 text-black',
+          inputFocusRing: 'focus:ring-cyan-400',
+          inputBorder: 'border-cyan-400/60',
+        };
+      case 'dis':
+        return {
+          containerClass: 'bg-stone-900/80 border-[#D6C1A6]/50 shadow-md shadow-stone-950/30',
+          titleColor: 'text-[#E8DAC8]',
+          dotColor: 'bg-[#D6C1A6]',
+          badgeClass: 'bg-[#D6C1A6]/20 text-[#F5EDE3] border-[#D6C1A6]/40',
+          targetColor: 'text-[#E8DAC8]',
+          cardBgClass: 'bg-stone-900/65 hover:bg-stone-900/85 border-[#D6C1A6]/40 hover:border-[#D6C1A6] shadow-md shadow-stone-950/20',
+          stepNumberClass: 'bg-stone-900 text-[#E8DAC8] border-[#D6C1A6]/50',
+          btnClass: 'bg-[#D6C1A6] hover:bg-[#e0d0bc] text-black shadow-sm shadow-stone-500/20',
+          inputWrapperClass: 'bg-stone-900/50 border-[#D6C1A6]/40',
+          inputLabelColor: 'text-[#E8DAC8]',
+          inputBadgeClass: 'bg-[#D6C1A6] text-black',
+          inputFocusRing: 'focus:ring-[#D6C1A6]',
+          inputBorder: 'border-[#D6C1A6]/60',
+        };
+      case 'isg':
+        return {
+          containerClass: 'bg-orange-950/40 border-orange-500/50 shadow-md shadow-orange-950/30',
+          titleColor: 'text-orange-400',
+          dotColor: 'bg-[#FF5B3A]',
+          badgeClass: 'bg-orange-500/20 text-orange-200 border-orange-500/40',
+          targetColor: 'text-orange-400',
+          cardBgClass: 'bg-orange-950/25 hover:bg-orange-950/40 border-orange-500/40 hover:border-orange-400 shadow-md shadow-orange-950/20',
+          stepNumberClass: 'bg-orange-950/80 text-orange-300 border-orange-500/50',
+          btnClass: 'bg-orange-500 hover:bg-orange-400 text-white shadow-sm shadow-orange-500/20',
+          inputWrapperClass: 'bg-orange-950/30 border-orange-500/40',
+          inputLabelColor: 'text-orange-400',
+          inputBadgeClass: 'bg-orange-500 text-white',
+          inputFocusRing: 'focus:ring-orange-500',
+          inputBorder: 'border-orange-500/60',
+        };
+      case 'elektrik':
+      default:
+        return {
+          containerClass: 'bg-yellow-950/40 border-yellow-400/50 shadow-md shadow-yellow-950/30',
+          titleColor: 'text-yellow-300',
+          dotColor: 'bg-[#FFFF66]',
+          badgeClass: 'bg-yellow-400/20 text-yellow-200 border-yellow-400/40',
+          targetColor: 'text-yellow-300',
+          cardBgClass: 'bg-yellow-950/20 hover:bg-yellow-950/35 border-yellow-400/40 hover:border-yellow-400 shadow-md shadow-yellow-950/20',
+          stepNumberClass: 'bg-yellow-950/80 text-yellow-300 border-yellow-400/50',
+          btnClass: 'bg-yellow-400 hover:bg-yellow-300 text-black shadow-sm shadow-yellow-500/20',
+          inputWrapperClass: 'bg-yellow-400/10 border-yellow-400/40',
+          inputLabelColor: 'text-yellow-400',
+          inputBadgeClass: 'bg-yellow-400 text-black',
+          inputFocusRing: 'focus:ring-yellow-400',
+          inputBorder: 'border-yellow-400/60',
+        };
+    }
   };
 
   // Helper to get active tasks for any machine
@@ -231,16 +302,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         setAiAnalysisResult(null);
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  // Quick Preset Defect Reason Chip Click
-  const handleAddPresetReason = (reasonText: string) => {
-    setResult('RED');
-    if (!description.trim()) {
-      setDescription(`${reasonText}: Detaylı kontrol yapıldı, giderilmesi gerekiyor.`);
-    } else if (!description.includes(reasonText)) {
-      setDescription(`${description.trim()}, ${reasonText}`);
     }
   };
 
@@ -788,20 +849,42 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           {machineTasks.map((t, idx) => {
             const st = getTaskStatus(selectedMachine!.id, t.templateId);
             const dept = getDepartmentConfig(t.system);
+            const deptStyle = getDeptDisplayStyle(dept);
 
             return (
               <button
                 key={t.templateId}
                 type="button"
                 onClick={() => handleOpenTask(t)}
-                className={`w-full p-3.5 sm:p-4 rounded-2xl border transition-all text-left flex items-start gap-3 sm:gap-4 cursor-pointer active:scale-[0.99] ${
+                className={`relative overflow-hidden w-full p-3.5 sm:p-4 rounded-2xl border transition-all text-left flex items-start gap-3 sm:gap-4 cursor-pointer active:scale-[0.99] ${
                   st === 'red'
-                    ? 'bg-rose-950/30 border-rose-500/60 shadow-md'
+                    ? 'bg-rose-950/35 border-rose-500/70 shadow-md shadow-rose-950/30'
                     : st === 'tamamlanan'
-                    ? 'bg-emerald-950/20 border-emerald-500/50 shadow-md'
-                    : 'bg-[#121824] border-slate-800 hover:border-yellow-400 shadow-md'
+                    ? 'bg-emerald-950/25 border-emerald-500/60 shadow-md shadow-emerald-950/30'
+                    : deptStyle.cardBgClass
                 }`}
               >
+                {/* Large Semi-Transparent Watermark Stamp Overlay (Kartı kaplayacak büyüklükte RED / OK) */}
+                {st === 'red' && (
+                  <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center bg-rose-950/30 backdrop-blur-[0.5px]">
+                    <div className="border-4 sm:border-[5px] border-rose-500/80 rounded-2xl px-6 sm:px-12 py-1 sm:py-2 rotate-[-8deg] shadow-2xl bg-rose-950/60 select-none">
+                      <span className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-widest text-rose-400 drop-shadow-md">
+                        RED
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {st === 'tamamlanan' && (
+                  <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center bg-emerald-950/25 backdrop-blur-[0.5px]">
+                    <div className="border-4 sm:border-[5px] border-emerald-500/80 rounded-2xl px-6 sm:px-12 py-1 sm:py-2 rotate-[-8deg] shadow-2xl bg-emerald-950/60 select-none">
+                      <span className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-widest text-emerald-400 drop-shadow-md">
+                        OK
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Step Number with status indicator */}
                 <div
                   className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl font-black text-xs sm:text-sm shrink-0 flex items-center justify-center border shadow-xs ${
@@ -809,7 +892,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                       ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
                       : st === 'tamamlanan'
                       ? 'bg-emerald-500 text-black border-emerald-400'
-                      : 'bg-slate-800 text-yellow-400 border-yellow-500/40'
+                      : deptStyle.stepNumberClass
                   }`}
                 >
                   {idx + 1}
@@ -823,12 +906,13 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                   <div className="text-[11px] text-slate-400 font-medium flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span>Bölge: <b className="text-slate-300">{t.region || '-'}</b></span>
                     {t.part && <span>· Parça: <b className="text-slate-300">{t.part}</b></span>}
-                    {t.targetValue && <span>· Hedef: <b className="text-yellow-400">{t.targetValue}</b></span>}
+                    {t.targetValue && <span>· Hedef: <b className={deptStyle.targetColor}>{t.targetValue}</b></span>}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[10px] font-black bg-[#18202e] text-yellow-400 px-2 py-0.5 rounded-md border border-yellow-400/30">
-                      {dept?.ad || t.system || 'Genel'}
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border flex items-center gap-1 ${deptStyle.badgeClass}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${deptStyle.dotColor}`} />
+                      <span>{dept?.ad || t.system || 'Genel'}</span>
                     </span>
                     {t.photoRequired && (
                       <span className="text-[10px] font-black bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
@@ -851,7 +935,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                       <span>Tamam</span>
                     </span>
                   ) : (
-                    <span className="px-2.5 py-1 bg-yellow-400 text-black text-xs font-black rounded-lg flex items-center gap-1 shadow-sm">
+                    <span className={`px-2.5 py-1 text-xs font-black rounded-lg flex items-center gap-1 shadow-sm ${deptStyle.btnClass}`}>
                       <span>Kontrol</span>
                       <ArrowRight className="w-3 h-3" />
                     </span>
@@ -869,6 +953,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // VIEW 4: TASK EXECUTION & CONTROL SCREEN (Sarı-Siyah)
   // ==========================================
   const dept = getDepartmentConfig(selectedTask?.system);
+  const deptStyle = getDeptDisplayStyle(dept);
   const isRed = result === 'RED';
   const descLength = description.trim().length;
   const isPhotoRequired = Boolean(selectedTask?.photoRequired);
@@ -919,58 +1004,75 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           </div>
         ) : null}
 
-        {/* Task Specification Info */}
-        <div className="p-3.5 bg-[#0b0f17] rounded-xl border border-slate-800 text-white space-y-2">
-          <div className="text-[10px] uppercase font-bold tracking-wider text-yellow-400">
-            Yapılacak Kontrol
+        {/* Task Specification Info (Arıza / Birim Grubu Renginde RED Stili) */}
+        <div className={`p-4 rounded-xl border transition-all duration-200 space-y-2.5 ${deptStyle.containerClass}`}>
+          <div className="flex items-center justify-between">
+            <div className={`text-[10px] sm:text-[11px] uppercase font-black tracking-wider flex items-center gap-1.5 ${deptStyle.titleColor}`}>
+              <span className={`w-2 h-2 rounded-full ${deptStyle.dotColor} animate-pulse`} />
+              <span>YAPILACAK KONTROL</span>
+            </div>
+            {selectedTask?.photoRequired && (
+              <span className="text-[10px] font-black bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <Camera className="w-3 h-3 text-rose-400" />
+                <span>Fotoğraf Zorunlu</span>
+              </span>
+            )}
           </div>
-          <div className="text-sm sm:text-base font-black leading-snug break-words">
+
+          <div className="text-sm sm:text-base font-black leading-snug break-words text-white">
             {selectedTask?.task}
           </div>
 
-          <div className="flex flex-wrap gap-1.5 text-xs pt-1 border-t border-slate-800">
-            <span className="font-bold bg-[#18202e] text-yellow-400 px-2 py-0.5 rounded-md border border-yellow-400/30">
-              Birim: {dept?.ad || selectedTask?.system || 'Genel'}
+          <div className="flex flex-wrap gap-1.5 text-xs pt-1.5 border-t border-slate-700/60">
+            <span className={`font-black px-2.5 py-0.5 rounded-md border flex items-center gap-1.5 ${deptStyle.badgeClass}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${deptStyle.dotColor}`} />
+              <span>Birim: {dept?.ad || selectedTask?.system || 'Genel'}</span>
             </span>
-            <span className="font-bold bg-[#18202e] text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
+            <span className="font-bold bg-[#141b27] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700">
               Bölge: {selectedTask?.region || '-'}
             </span>
             {selectedTask?.part && (
-              <span className="font-bold bg-[#18202e] text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
+              <span className="font-bold bg-[#141b27] text-slate-300 px-2.5 py-0.5 rounded-md border border-slate-700">
                 Parça: {selectedTask?.part}
               </span>
             )}
           </div>
 
           {selectedTask?.targetValue && (
-            <div className="pt-2 text-xs sm:text-sm font-medium text-slate-300">
-              <span>Hedef Değer:</span>{' '}
-              <b className="font-black text-yellow-400">{selectedTask.targetValue}</b>
+            <div className="pt-2 text-xs sm:text-sm font-medium text-slate-200 border-t border-slate-700/40 flex items-center gap-1.5">
+              <span className="text-slate-400">Hedef Değer:</span>{' '}
+              <b className={`font-black ${deptStyle.targetColor}`}>{selectedTask.targetValue}</b>
             </div>
           )}
         </div>
       </div>
 
-      {/* Control Execution Form (Sarı-Siyah) */}
-      <div className="bg-[#121824] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md space-y-4">
+      {/* Control Execution Form (Sarı-Siyah / RED Seçildiğinde Gül-Kırmızı Arkaplan) */}
+      <div
+        className={`p-4 sm:p-5 rounded-2xl border shadow-md space-y-4 transition-all duration-200 ${
+          isRed
+            ? 'bg-rose-950/40 border-rose-600/50 shadow-rose-950/40'
+            : 'bg-[#121824] border-slate-800'
+        }`}
+      >
         {/* Measured Value Input */}
         {selectedTask?.targetValue && (
-          <div className="p-3.5 bg-yellow-400/10 rounded-xl border border-yellow-400/40">
-            <label className="block text-xs font-black text-yellow-400 mb-1 flex items-center justify-between">
+          <div className={`p-3.5 rounded-xl border ${deptStyle.inputWrapperClass}`}>
+            <label className={`block text-xs font-black mb-1 flex items-center justify-between ${deptStyle.inputLabelColor}`}>
               <span>Ölçülen Değer / Tespit</span>
-              <span className="text-[9px] font-black bg-yellow-400 text-black px-2 py-0.5 rounded-full uppercase">
+              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${deptStyle.inputBadgeClass}`}>
                 ZORUNLU
               </span>
             </label>
             <div className="text-[11px] text-slate-400 mb-1.5 font-medium">
-              İstenen Referans: <b className="text-yellow-400">{selectedTask.targetValue}</b>
+              İstenen Referans: <b className={deptStyle.targetColor}>{selectedTask.targetValue}</b>
             </div>
             <input
               type="text"
               value={measuredValue}
               onChange={(e) => setMeasuredValue(e.target.value)}
               placeholder="Ör: 4.8 bar / 48°C / 8.2mm"
-              className="w-full px-3 py-2.5 bg-[#0b0f17] border border-yellow-400/60 rounded-xl text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className={`w-full px-3 py-2.5 bg-[#0b0f17] border rounded-xl text-base font-bold text-white focus:outline-none focus:ring-2 ${deptStyle.inputBorder} ${deptStyle.inputFocusRing}`}
             />
           </div>
         )}
@@ -1009,26 +1111,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           </div>
         </div>
 
-        {/* Quick Defect Reason Chips for RED */}
-        {isRed && (
-          <div className="p-3 bg-rose-950/40 rounded-xl border border-rose-600/50 space-y-2 animate-in fade-in duration-150">
-            <div className="text-[11px] font-black text-rose-400">
-              ⚡ Hızlı Arıza Sebebi Seçin:
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESET_DEFECT_REASONS.map((reason) => (
-                <button
-                  key={reason}
-                  type="button"
-                  onClick={() => handleAddPresetReason(reason)}
-                  className="px-2.5 py-1 bg-[#161d2b] hover:bg-rose-900 border border-rose-700 text-rose-200 text-xs font-bold rounded-lg transition-colors shadow-2xs active:scale-95 cursor-pointer"
-                >
-                  + {reason}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Description Field */}
         <div>
