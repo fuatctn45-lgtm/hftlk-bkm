@@ -16,7 +16,134 @@ import {
   Check,
   Clock,
   ArrowRight,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
+
+// Helper: extract Google Drive File ID from diverse Drive link formats
+export function extractDriveFileId(url?: string | null): string | null {
+  if (!url) return null;
+  const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) return m1[1];
+  const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2) return m2[1];
+  const m3 = url.match(/googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+  if (m3) return m3[1];
+  return null;
+}
+
+// Resilient Proof Image Thumbnail Component
+const ProofImagePreview: React.FC<{
+  record: MaintenanceRecord;
+  onOpenLightbox: (url: string, driveViewUrl?: string, caption?: string, fileId?: string) => void;
+}> = ({ record, onOpenLightbox }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  // Check if we have the crisp base64 stored locally from the operator session
+  const getLocalBase64 = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const direct = localStorage.getItem(`proofImg_${record.recordId}`) ||
+                     (record.clientRequestId ? localStorage.getItem(`proofImg_${record.clientRequestId}`) : null) ||
+                     (record.machineId && record.templateId ? localStorage.getItem(`proofImg_${record.machineId}_${record.templateId}`) : null) ||
+                     (record.templateId ? localStorage.getItem(`proofImg_${record.templateId}`) : null);
+      if (direct) return direct;
+
+      const map = JSON.parse(localStorage.getItem('cmms_photos_map') || '{}');
+      if (record.recordId && map[record.recordId]) return map[record.recordId];
+      if (record.templateId && map[record.templateId]) return map[record.templateId];
+      if (record.machineId && record.templateId && map[`${record.machineId}_${record.templateId}`]) {
+        return map[`${record.machineId}_${record.templateId}`];
+      }
+    } catch {}
+    return null;
+  };
+
+  const localBase64 = getLocalBase64();
+  const rawUrl = record.proofImageUrl || '';
+  const fileId = extractDriveFileId(rawUrl);
+  const driveViewUrl = fileId
+    ? `https://drive.google.com/file/d/${fileId}/view`
+    : rawUrl.startsWith('http') ? rawUrl : undefined;
+
+  // Build candidate image sources in order of preference
+  const candidateUrls = React.useMemo(() => {
+    const list: string[] = [];
+    if (localBase64) list.push(localBase64);
+    if (rawUrl.startsWith('data:')) list.push(rawUrl);
+    if (fileId) {
+      list.push(`https://drive.google.com/thumbnail?id=${fileId}&sz=w800`);
+      list.push(`https://lh3.googleusercontent.com/d/${fileId}=w800`);
+      list.push(`https://drive.google.com/uc?export=view&id=${fileId}`);
+    } else if (rawUrl) {
+      list.push(rawUrl);
+    }
+    return list;
+  }, [localBase64, rawUrl, fileId]);
+
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const currentUrl = candidateUrls[currentIdx] || candidateUrls[0] || rawUrl;
+  const captionText = `${record.machineName} - ${record.task || 'Arıza Kanıtı'}`;
+
+  const handleImgError = () => {
+    if (currentIdx < candidateUrls.length - 1) {
+      setCurrentIdx((prev) => prev + 1);
+    }
+  };
+
+  return (
+    <div className="ml-2 pt-1 flex flex-wrap items-center gap-3">
+      {/* Thumbnail Box - Clicking expands */}
+      <div
+        onClick={() => onOpenLightbox(currentUrl, driveViewUrl, captionText, fileId || undefined)}
+        className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-yellow-400 cursor-pointer group shadow-md shrink-0 bg-slate-900 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        title="Büyütmek için dokunun"
+      >
+        <img
+          src={currentUrl}
+          alt="Saha Kanıt Fotoğrafı"
+          onLoad={() => setImgLoaded(true)}
+          onError={handleImgError}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/25 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+          <div className="w-7 h-7 bg-yellow-400/90 text-black rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+            <Maximize2 className="w-4 h-4" />
+          </div>
+        </div>
+      </div>
+
+      {/* Info & Direct Drive Links */}
+      <div className="text-xs space-y-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold text-white">Saha Kanıt Fotoğrafı</span>
+          <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded">
+            Kayıtlı ✔
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => onOpenLightbox(currentUrl, driveViewUrl, captionText, fileId || undefined)}
+          className="text-[11px] text-yellow-400 hover:text-yellow-300 font-bold block text-left hover:underline cursor-pointer"
+        >
+          🔍 Büyütmek için dokunun
+        </button>
+        {driveViewUrl && (
+          <a
+            href={driveViewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-white font-medium hover:underline"
+          >
+            <span>Google Drive'da Aç</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
 
 interface RedListViewProps {
   records: MaintenanceRecord[];
@@ -34,7 +161,12 @@ export const RedListView: React.FC<RedListViewProps> = ({
   const [periodFilter, setPeriodFilter] = useState<'bu' | 'gecen' | 'tum'>('bu');
   const [selectedMachine, setSelectedMachine] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxData, setLightboxData] = useState<{
+    url: string;
+    driveViewUrl?: string;
+    caption?: string;
+    fileId?: string;
+  } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const thisWeek = getWeekKey();
@@ -284,27 +416,14 @@ export const RedListView: React.FC<RedListViewProps> = ({
                   </div>
                 </div>
 
-                {/* Proof Photo Thumbnail */}
+                {/* Proof Photo Thumbnail with Resilient Preview */}
                 {r.proofImageUrl && (
-                  <div className="ml-2 pt-1 flex items-center gap-3">
-                    <div
-                      onClick={() => setLightboxImage(r.proofImageUrl || null)}
-                      className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-yellow-400/50 cursor-zoom-in group shadow-xs shrink-0 bg-black"
-                    >
-                      <img
-                        src={r.proofImageUrl}
-                        alt="Arıza Kanıtı"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-yellow-400 text-xs">
-                        <Maximize2 className="w-4 h-4" />
-                      </div>
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      <span className="font-bold text-white block">Saha Kanıt Fotoğrafı</span>
-                      <span>Büyütmek için görselin üzerine dokunun.</span>
-                    </div>
-                  </div>
+                  <ProofImagePreview
+                    record={r}
+                    onOpenLightbox={(url, driveViewUrl, caption, fileId) =>
+                      setLightboxData({ url, driveViewUrl, caption, fileId })
+                    }
+                  />
                 )}
 
                 {/* Action button: Mark Resolved */}
@@ -329,25 +448,66 @@ export const RedListView: React.FC<RedListViewProps> = ({
         </div>
       )}
 
-      {/* Lightbox Modal */}
-      {lightboxImage && (
+      {/* Lightbox Modal with Google Drive direct integration */}
+      {lightboxData && (
         <div
-          onClick={() => setLightboxImage(null)}
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setLightboxData(null)}
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-3 sm:p-5 backdrop-blur-xs animate-in fade-in"
         >
-          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
-            <button
-              type="button"
-              onClick={() => setLightboxImage(null)}
-              className="absolute -top-10 right-0 text-yellow-400 hover:text-white p-1"
-            >
-              <X className="w-7 h-7" />
-            </button>
-            <img
-              src={lightboxImage}
-              alt="Büyütülmüş Görsel"
-              className="max-w-full max-h-[80vh] object-contain rounded-2xl bg-black border border-yellow-500/40 shadow-2xl"
-            />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl w-full max-h-[92vh] flex flex-col items-center gap-2.5"
+          >
+            {/* Modal Header */}
+            <div className="w-full flex items-center justify-between text-white border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Camera className="w-4 h-4 text-yellow-400 shrink-0" />
+                <span className="font-black text-xs sm:text-sm text-yellow-400 truncate">
+                  {lightboxData.caption || 'Saha Kanıt Fotoğrafı'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {lightboxData.driveViewUrl && (
+                  <a
+                    href={lightboxData.driveViewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 sm:px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-lg text-xs flex items-center gap-1.5 shadow-md"
+                  >
+                    <span>Google Drive'da Aç</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setLightboxData(null)}
+                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-yellow-400 hover:text-white rounded-lg cursor-pointer transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Box */}
+            <div className="relative w-full max-h-[82vh] flex items-center justify-center rounded-2xl bg-[#080b11] border border-yellow-500/40 p-2 overflow-hidden shadow-2xl">
+              {lightboxData.fileId ? (
+                <div className="w-full h-[72vh] flex flex-col">
+                  {/* Google Drive interactive iframe with full zoom/pan */}
+                  <iframe
+                    src={`https://drive.google.com/file/d/${lightboxData.fileId}/preview`}
+                    title="Google Drive Önizleme"
+                    className="w-full h-full rounded-xl border-0 bg-black"
+                    allow="autoplay"
+                  />
+                </div>
+              ) : (
+                <img
+                  src={lightboxData.url}
+                  alt="Büyütülmüş Görsel"
+                  className="max-w-full max-h-[74vh] object-contain rounded-xl shadow-lg"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

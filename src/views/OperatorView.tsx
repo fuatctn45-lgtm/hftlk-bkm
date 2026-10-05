@@ -453,6 +453,23 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       } as any);
 
       if (res.success) {
+        // Cache proof image locally for instant high-speed preview
+        if (proofImage) {
+          try {
+            if (res.recordId) {
+              localStorage.setItem(`proofImg_${res.recordId}`, proofImage);
+            }
+            localStorage.setItem(`proofImg_${selectedMachine.id}_${selectedTask.templateId}`, proofImage);
+            localStorage.setItem(`proofImg_${selectedTask.templateId}`, proofImage);
+
+            const map = JSON.parse(localStorage.getItem('cmms_photos_map') || '{}');
+            if (res.recordId) map[res.recordId] = proofImage;
+            map[`${selectedMachine.id}_${selectedTask.templateId}`] = proofImage;
+            map[selectedTask.templateId] = proofImage;
+            localStorage.setItem('cmms_photos_map', JSON.stringify(map));
+          } catch {}
+        }
+
         setSaveMessage({
           type: 'success',
           text: `Bakım kontrolü başarıyla kaydedildi! (${result})`,
