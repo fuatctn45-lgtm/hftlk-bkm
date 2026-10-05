@@ -828,7 +828,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-3 text-slate-400 hover:text-white p-0.5"
+                className="absolute right-3 top-3 text-slate-400 hover:text-white p-0.5 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -872,7 +872,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl"
+                className="px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl cursor-pointer"
               >
                 Aramayı Sıfırla
               </button>

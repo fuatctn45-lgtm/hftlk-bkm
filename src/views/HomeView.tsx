@@ -1,16 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserSession, Machine, MaintenanceTemplate, MaintenanceRecord } from '../types/cmms';
 import { getWeekKey } from '../services/cmmsApi';
 import {
   Wrench,
   AlertTriangle,
-  BarChart3,
-  Sparkles,
-  Settings,
   CheckCircle2,
   Clock,
   ArrowRight,
   TrendingUp,
+  Search,
+  Check,
+  X,
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -29,8 +29,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigate,
 }) => {
   const currentWeek = getWeekKey();
-  const isAdmin = String(user.role || '').toLowerCase().includes('admin');
   const operatorName = user.operator || user.name || user.fullName || 'Operatör';
+  const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'completed' | 'hasRed'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Calculate current week statistics
   const currentWeekRecords = useMemo(() => {
@@ -47,6 +48,150 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const uygunCount = currentWeekRecords.filter((r) => r.result === 'UYGUN').length;
   const pendingCount = Math.max(0, totalPlanned - completed);
   const completionRate = totalPlanned > 0 ? Math.round((completed / totalPlanned) * 100) : 0;
+
+  const getMachineTasks = (m: Machine) => {
+    return templates
+      .filter((t) => (t.machineId === m.id || t.machineName === m.machineName) && t.active)
+      .sort((a, b) => (a.orderNo || 1) - (b.orderNo || 1));
+  };
+
+  const getTaskStatus = (machineId: string, templateId: string): 'bekleyen' | 'tamamlanan' | 'red' => {
+    const rec = currentWeekRecords.find(
+      (r) => (r.machineId === machineId || r.machineName === machineId) && r.templateId === templateId
+    );
+    if (!rec) return 'bekleyen';
+    return rec.result === 'RED' ? 'red' : 'tamamlanan';
+  };
+
+  const machinesWithTasks = useMemo(() => {
+    return machines.filter((m) => getMachineTasks(m).length > 0);
+  }, [machines, templates]);
+
+  const filteredMachinesList = useMemo(() => {
+    return machinesWithTasks.filter((m) => {
+      const codeStr = m.machineCode || m.code || m.costCenter || '';
+      return (
+        m.machineName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        codeStr.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
+  }, [machinesWithTasks, searchTerm]);
+
+  const pendingMachines = useMemo(() => {
+    return filteredMachinesList.filter((m) => {
+      const mTasks = getMachineTasks(m);
+      const hasRed = mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
+      const doneCount = mTasks.filter((t) => getTaskStatus(m.id, t.templateId) !== 'bekleyen').length;
+      return !hasRed && (mTasks.length === 0 || doneCount < mTasks.length);
+    });
+  }, [filteredMachinesList, currentWeekRecords]);
+
+  const completedMachines = useMemo(() => {
+    return filteredMachinesList.filter((m) => {
+      const mTasks = getMachineTasks(m);
+      const hasRed = mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
+      const doneCount = mTasks.filter((t) => getTaskStatus(m.id, t.templateId) !== 'bekleyen').length;
+      return !hasRed && mTasks.length > 0 && doneCount >= mTasks.length;
+    });
+  }, [filteredMachinesList, currentWeekRecords]);
+
+  const redMachines = useMemo(() => {
+    return filteredMachinesList.filter((m) => {
+      const mTasks = getMachineTasks(m);
+      return mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
+    });
+  }, [filteredMachinesList, currentWeekRecords]);
+
+  const renderHomeMachineRow = (m: Machine) => {
+    const mTasks = getMachineTasks(m);
+    const completedCount = mTasks.filter(
+      (t) => getTaskStatus(m.id, t.templateId) !== 'bekleyen'
+    ).length;
+    const hasRed = mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
+    const isAllDone = mTasks.length > 0 && completedCount >= mTasks.length;
+    const percent = mTasks.length > 0 ? Math.round((completedCount / mTasks.length) * 100) : 0;
+
+    return (
+      <div
+        key={m.id}
+        onClick={() => {
+          if (hasRed) onNavigate('redList');
+          else onNavigate('operator');
+        }}
+        className={`group w-full p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 active:scale-[0.99] hover:shadow-md ${
+          hasRed
+            ? 'bg-rose-950/25 border-rose-500/70 hover:border-rose-400 hover:bg-rose-950/35'
+            : isAllDone
+            ? 'bg-emerald-950/20 border-emerald-500/50 hover:border-emerald-400 hover:bg-emerald-950/30'
+            : 'bg-[#1b263b] border-slate-700/80 hover:border-yellow-400 hover:bg-[#202e47]'
+        }`}
+      >
+        <div className="min-w-0 flex-1 space-y-2">
+          {/* Makine İsmi & Masraf Merkezi */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base sm:text-lg font-black text-yellow-400 group-hover:text-yellow-300 transition-colors">
+              {m.machineName}
+            </h3>
+            <span className="text-[11px] font-mono font-bold bg-[#141d2d] text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+              {m.costCenter || m.code || m.id}
+            </span>
+          </div>
+
+          {/* Resimdeki Gibi Numaralı Adım Kutuları (Hangi Sıradaki Bakımlar Bitmiş Belli Olsun) */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            {mTasks.map((t, idx) => {
+              const st = getTaskStatus(m.id, t.templateId);
+              const bg =
+                st === 'red'
+                  ? 'bg-rose-600 text-white shadow-xs animate-pulse ring-1 ring-rose-400'
+                  : st === 'tamamlanan'
+                  ? 'bg-emerald-500 text-black font-black shadow-xs'
+                  : 'bg-[#141d2d] text-yellow-400 border border-yellow-500/50 hover:border-yellow-400';
+
+              return (
+                <span
+                  key={t.templateId}
+                  title={`${idx + 1}. ${t.task} (${st.toUpperCase()})`}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg font-mono font-black text-xs sm:text-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${bg}`}
+                >
+                  {idx + 1}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* İlerleme Bilgisi */}
+          <div className="text-[11px] text-slate-400 font-semibold flex items-center gap-2 pt-0.5">
+            <span>İlerleme ({completedCount}/{mTasks.length})</span>
+            <span>•</span>
+            <span className={hasRed ? 'text-rose-400 font-bold' : isAllDone ? 'text-emerald-400 font-bold' : 'text-yellow-400 font-bold'}>
+              %{percent}
+            </span>
+            <span>•</span>
+            <span className={hasRed ? 'text-rose-400' : isAllDone ? 'text-emerald-400' : 'text-slate-300'}>
+              {hasRed ? 'RED Arıza' : isAllDone ? 'Tamamlandı' : 'Devam Ediyor'}
+            </span>
+          </div>
+        </div>
+
+        {/* Sağ: Hızlı Aksiyon Butonu */}
+        <div className="shrink-0 flex items-center justify-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+          <div
+            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-xs transition-transform group-hover:scale-102 ${
+              hasRed
+                ? 'bg-rose-600 text-white'
+                : isAllDone
+                ? 'bg-emerald-500 text-black'
+                : 'bg-yellow-400 hover:bg-yellow-300 text-black'
+            }`}
+          >
+            <span>{hasRed ? 'Arızayı Gör' : isAllDone ? 'Görüntüle' : 'Bakıma Başla'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4 sm:space-y-6">
@@ -150,127 +295,153 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* Main Navigation Action Grid (Sarı - Siyah) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-        {/* Tile 1: Operator Panel */}
-        <div
-          onClick={() => onNavigate('operator')}
-          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
-        >
+      {/* Search & Filter Header for Machines */}
+      <div className="bg-[#1b263b] p-3.5 sm:p-5 rounded-2xl border border-slate-700/70 shadow-md space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="w-11 h-11 rounded-2xl bg-yellow-400 text-black flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform shadow-md shadow-yellow-500/20">
-              <Wrench className="w-5 h-5" />
-            </div>
-            <h3 className="text-base sm:text-lg font-black text-white group-hover:text-yellow-400 transition-colors mb-1">
-              Operatör Bakım Paneli
+            <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+              <span>Haftalık Makine Bakım Durumu</span>
+              <span className="text-xs font-black text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-md border border-yellow-400/30">
+                {machinesWithTasks.length} Makine
+              </span>
             </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Makineleri seçin, QR kodlarını okutun ve birimlere göre renklendirilmiş haftalık kontrol adımlarını gerçekleştirin.
+            <p className="text-xs text-slate-400 font-medium">
+              Bakım bekleyen ve tamamlanan makinelerin listesi
             </p>
           </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
-            <span>Kontrole Başla ({machines.length} Makine)</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+
+          {/* Segmented Filter Control */}
+          <div className="flex items-center bg-[#141d2d] p-1 rounded-xl text-xs font-bold w-full sm:w-auto overflow-x-auto border border-slate-700/80">
+            <button
+              type="button"
+              onClick={() => setFilterTab('all')}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                filterTab === 'all'
+                  ? 'bg-yellow-400 text-black shadow-xs font-black'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Tümü ({machinesWithTasks.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('pending')}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                filterTab === 'pending'
+                  ? 'bg-yellow-400 text-black shadow-xs font-black'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bakım Olan ({pendingMachines.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('completed')}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                filterTab === 'completed'
+                  ? 'bg-emerald-500 text-black shadow-xs font-black'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bakımı Biten ({completedMachines.length})
+            </button>
+            {redMachines.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilterTab('hasRed')}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                  filterTab === 'hasRed'
+                    ? 'bg-rose-600 text-white shadow-xs font-black'
+                    : 'text-rose-400 hover:text-white'
+                }`}
+              >
+                RED Arıza ({redMachines.length})
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Tile 2: RED List */}
-        <div
-          onClick={() => onNavigate('redList')}
-          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-rose-500 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
-        >
-          <div>
-            <div className="w-11 h-11 rounded-2xl bg-rose-950/80 text-rose-400 border border-rose-800/50 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform relative">
-              <AlertTriangle className="w-5 h-5" />
-              {redCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-pulse">
-                  {redCount}
-                </span>
-              )}
-            </div>
-            <h3 className="text-base sm:text-lg font-black text-white group-hover:text-rose-400 transition-colors mb-1">
-              RED Arıza Takibi
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Operatörlerin uygun bulmadığı kritik arıza kayıtları, fotoğraflı kanıtlar ve "Giderildi" aksiyon takibi.
-            </p>
-          </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-rose-400 font-bold text-xs sm:text-sm">
-            <span>{redCount > 0 ? `${redCount} Açık Arıza Mevcut` : 'Arızaları İncele'}</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
+        {/* Search input */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Makine adı veya masraf merkezi ara..."
+            className="w-full pl-10 pr-9 py-2.5 bg-[#141d2d] border border-slate-700 rounded-xl text-sm font-semibold text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-3 text-slate-400 hover:text-white p-0.5 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
+      </div>
 
-        {/* Tile 3: Reports */}
-        <div
-          onClick={() => onNavigate('reports')}
-          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
-        >
-          <div>
-            <div className="w-11 h-11 rounded-2xl bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
-              <BarChart3 className="w-5 h-5" />
-            </div>
-            <h3 className="text-base sm:text-lg font-black text-white group-hover:text-yellow-400 transition-colors mb-1">
-              Bakım Raporları & Analitik
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Makine ve birim bazında detaylı istatistikler, Excel (CSV) dışa aktarımı, yazdırma ve tek tıkla PDF e-posta gönderimi.
-            </p>
-          </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
-            <span>Raporları İncele</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
-
-        {/* Tile 4: AI Technical Assistant */}
-        <div
-          onClick={() => onNavigate('aiSearch')}
-          className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
-        >
-          <div>
-            <div className="w-11 h-11 rounded-2xl bg-yellow-400/20 text-yellow-400 border border-yellow-400/40 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform shadow-xs">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-base sm:text-lg font-black text-white group-hover:text-yellow-400 transition-colors">
-                AKG AI Danışman
-              </h3>
-              <span className="text-[10px] bg-yellow-400 text-black font-black px-1.5 py-0.2 rounded">
-                Canlı Arama
+      {/* Machine Rows by Status */}
+      <div className="space-y-4">
+        {/* RED Arızalı Makineler (varsa) */}
+        {redMachines.length > 0 && (filterTab === 'all' || filterTab === 'hasRed') && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1 text-xs font-black text-rose-400">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                <span>RED ARIZALI MAKİNELER</span>
+              </div>
+              <span className="text-[11px] bg-rose-950/80 px-2.5 py-0.5 rounded-md border border-rose-800/60 font-bold">
+                {redMachines.length} Makine
               </span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Gemini ve canlı Google Arama ile radyatör montajı, arıza kodları, hidrolik değerler ve ISO standartlarını teknik danışmana sorun.
-            </p>
+            <div className="space-y-2">
+              {redMachines.map(renderHomeMachineRow)}
+            </div>
           </div>
-          <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
-            <span>Teknik Kılavuza Sor</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
+        )}
 
-        {/* Tile 5: Admin Panel (if admin) */}
-        {isAdmin && (
-          <div
-            onClick={() => onNavigate('admin')}
-            className="group bg-[#1b263b] rounded-2xl p-5 sm:p-6 border border-slate-700/70 hover:border-yellow-400 shadow-md cursor-pointer transition-all flex flex-col justify-between active:scale-[0.99]"
-          >
-            <div>
-              <div className="w-11 h-11 rounded-2xl bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
-                <Settings className="w-5 h-5" />
+        {/* Bakım Olan / Devam Eden Makineler */}
+        {pendingMachines.length > 0 && (filterTab === 'all' || filterTab === 'pending') && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1 text-xs font-black text-yellow-400">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                <span>BAKIM OLAN / DEVAM EDEN MAKİNELER</span>
               </div>
-              <h3 className="text-base sm:text-lg font-black text-white group-hover:text-yellow-400 transition-colors mb-1">
-                Admin Bakım Tanımı
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Makinelere yeni kontrol maddeleri ekleyin, birim renklerini düzenleyin, fotoğraf zorunluluğu koyun ve şablonları yönetin.
-              </p>
+              <span className="text-[11px] bg-yellow-400/10 px-2.5 py-0.5 rounded-md border border-yellow-400/30 font-bold text-yellow-400">
+                {pendingMachines.length} Makine
+              </span>
             </div>
-            <div className="mt-4 pt-3.5 border-t border-slate-700/80 flex items-center justify-between text-yellow-400 font-bold text-xs sm:text-sm">
-              <span>Tanımları Yönet ({templates.length} Madde)</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <div className="space-y-2">
+              {pendingMachines.map(renderHomeMachineRow)}
             </div>
+          </div>
+        )}
+
+        {/* Bakımı Biten (Tamamlanan) Makineler */}
+        {completedMachines.length > 0 && (filterTab === 'all' || filterTab === 'completed') && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1 text-xs font-black text-emerald-400">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span>BAKIMI BİTEN (TAMAMLANAN) MAKİNELER</span>
+              </div>
+              <span className="text-[11px] bg-emerald-950/80 px-2.5 py-0.5 rounded-md border border-emerald-800/60 font-bold text-emerald-400">
+                {completedMachines.length} Makine
+              </span>
+            </div>
+            <div className="space-y-2">
+              {completedMachines.map(renderHomeMachineRow)}
+            </div>
+          </div>
+        )}
+
+        {filteredMachinesList.length === 0 && (
+          <div className="bg-[#1b263b] p-8 text-center rounded-2xl border border-slate-700/70 text-slate-400">
+            Aramanıza uygun makine bulunamadı.
           </div>
         )}
       </div>
