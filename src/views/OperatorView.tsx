@@ -42,6 +42,61 @@ interface OperatorViewProps {
 }
 
 
+// Helper: accurately determine if a task strictly requires a photo
+export function isTaskPhotoMandatory(task?: MaintenanceTemplate | null): boolean {
+  if (!task) return false;
+  const val = (task as any).photoRequired;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'number') return val === 1;
+  if (typeof val === 'string') {
+    const s = val.trim().toLowerCase();
+    return s === 'true' || s === 'evet' || s === '1' || s === 'zorunlu' || s === 'yes';
+  }
+  return false;
+}
+
+// Helper: compress raw camera photos (5-15MB) into lightweight crisp ~150-250KB JPEG
+function compressImageFile(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawData = event.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          resolve(compressed);
+          return;
+        }
+        resolve(rawData);
+      };
+      img.onerror = () => resolve(rawData);
+      img.src = rawData;
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
 export const OperatorView: React.FC<OperatorViewProps> = ({
   user,
   machines,
@@ -291,17 +346,23 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     setSubStep('control');
   };
 
-  // Handle image upload / camera capture
-  const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle image upload / camera capture with fast client compression
+  const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setProofImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setProofImage(event.target?.result as string);
+      try {
+        const compressedBase64 = await compressImageFile(file);
+        setProofImage(compressedBase64);
         setAiAnalysisResult(null);
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setProofImage(event.target?.result as string);
+          setAiAnalysisResult(null);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -365,7 +426,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     }
 
     // Check mandatory photo
-    if (selectedTask.photoRequired && !proofImage) {
+    if (isTaskPhotoMandatory(selectedTask) && !proofImage) {
       setSaveMessage({
         type: 'error',
         text: 'Bu kontrol maddesi için kanıt fotoğrafı yüklenmesi zorunludur.',
@@ -387,8 +448,9 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         description: description.trim() || undefined,
         operator: user.operator || user.name || user.fullName || 'Operatör',
         operatorRole: user.role || 'operator',
+        proofImageUrl: proofImage || undefined,
         photoDataUrl: proofImage || undefined,
-      });
+      } as any);
 
       if (res.success) {
         setSaveMessage({
@@ -914,7 +976,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                       <span className={`w-1.5 h-1.5 rounded-full ${deptStyle.dotColor}`} />
                       <span>{dept?.ad || t.system || 'Genel'}</span>
                     </span>
-                    {t.photoRequired && (
+                    {isTaskPhotoMandatory(t) && (
                       <span className="text-[10px] font-black bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
                         <Camera className="w-3 h-3 text-rose-400" />
                         <span>Fotoğraf Zorunlu</span>
@@ -956,7 +1018,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const deptStyle = getDeptDisplayStyle(dept);
   const isRed = result === 'RED';
   const descLength = description.trim().length;
-  const isPhotoRequired = Boolean(selectedTask?.photoRequired);
+  const isPhotoRequired = isTaskPhotoMandatory(selectedTask);
   const saveDisabled = saveLoading || (isPhotoRequired && !proofImage);
 
   // Audio briefing text for TTS
@@ -1011,7 +1073,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <span className={`w-2 h-2 rounded-full ${deptStyle.dotColor} animate-pulse`} />
               <span>YAPILACAK KONTROL</span>
             </div>
-            {selectedTask?.photoRequired && (
+            {isPhotoRequired && (
               <span className="text-[10px] font-black bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
                 <Camera className="w-3 h-3 text-rose-400" />
                 <span>Fotoğraf Zorunlu</span>

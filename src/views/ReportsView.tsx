@@ -197,22 +197,27 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const periodLabel = periodType === 'bu'
+    ? `Bu Hafta (${thisWeek})`
+    : periodType === 'gecen'
+    ? `Geçen Hafta (${lastWeek})`
+    : periodType === 'son4'
+    ? 'Son 4 Hafta'
+    : periodType === 'ay'
+    ? 'Bu Ay'
+    : `${startDate || thisWeek} - ${endDate || thisWeek}`;
+
+  // Print/Export Pristine White-Background Full-Color Landscape A3 PDF Report
+  const handlePrintA3Report = () => {
+    window.print();
+  };
+
   // Send Email PDF (sendReportMailJsonp) in Landscape A3 Full-Color format
   const handleSendEmailPdf = async () => {
     setMailSending(true);
     setMailResult(null);
 
     const fileName = `HAFTALIK_BAKIM_KONTROL_FORMU_${operatorName.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '_')}_A3.pdf`;
-
-    const periodLabel = periodType === 'bu'
-      ? `Bu Hafta (${thisWeek})`
-      : periodType === 'gecen'
-      ? `Geçen Hafta (${lastWeek})`
-      : periodType === 'son4'
-      ? 'Son 4 Hafta'
-      : periodType === 'ay'
-      ? 'Bu Ay'
-      : `${startDate || thisWeek} - ${endDate || thisWeek}`;
 
     // Generate comprehensive, executive, full-color A3 Landscape HTML containing ALL records
     const reportHtml = generateA3LandscapeReportHtml({
@@ -302,10 +307,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-[#0b0f17] hover:bg-yellow-400 hover:text-black text-yellow-400 border border-yellow-500/30 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-400 hover:bg-yellow-300 text-black rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-yellow-500/20 active:scale-95"
+            title="Beyaz zeminli, tam renkli Yatay A3 PDF formatında yazdır veya PDF olarak kaydet"
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Yazdır</span>
+            <Printer className="w-4 h-4 text-black" />
+            <span>Yatay A3 PDF / Yazdır</span>
           </button>
 
           <button
@@ -407,71 +413,86 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         )}
       </div>
 
-      {/* Official Form Header (Print friendly) */}
-      <div className="bg-black text-white p-5 rounded-2xl border border-yellow-500/40 shadow-sm space-y-2 print:bg-white print:text-black print:rounded-none">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-yellow-400 print:text-black">
-          HAFTALIK BAKIM KONTROL FORMU
-        </h2>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-sm text-slate-300 font-medium print:text-black">
+      {/* Official Form Header (Print friendly - Yatay A3) */}
+      <div className="bg-black print:bg-white text-white print:text-black p-4 sm:p-5 rounded-2xl print:rounded-lg border border-yellow-500/40 print:border-2 print:border-[#0f4c81] shadow-sm space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] print:text-slate-600 font-bold uppercase tracking-wider text-yellow-400">
+              AKG TERMAL SİSTEMLER CMMS • RESMİ BAKIM FORMU
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-yellow-400 print:text-[#0f2d4d]">
+              HAFTALIK PERİYODİK BAKIM KONTROL FORMU
+            </h2>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] text-slate-400 print:text-slate-600 font-bold block uppercase">Doküman Kodu</span>
+            <span className="font-mono font-black text-sm text-yellow-400 print:text-red-700">IZM 350522_BKM_015</span>
+            <span className="text-[9px] text-slate-400 print:text-slate-500 font-semibold block">REV1 / 16.06.2020 • YATAY A3</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-sm text-slate-300 font-medium print:text-slate-800 pt-1 border-t border-slate-800 print:border-slate-300">
           <span>
-            Bakımı Yapan: <b className="text-yellow-400 print:text-black">{operatorName}</b>
+            Bakımı Yapan: <b className="text-yellow-400 print:text-[#0f2d4d]">{operatorName}</b>
           </span>
           <span>
-            Dönem: <b className="text-white print:text-black">{periodType === 'bu' ? thisWeek : periodType}</b>
+            Dönem: <b className="text-white print:text-[#0f2d4d]">{periodType === 'bu' ? thisWeek : periodType}</b>
           </span>
           <span>
-            Rapor Tarihi: <b className="text-white print:text-black">{new Date().toLocaleDateString('tr-TR')}</b>
+            Rapor Tarihi: <b className="text-white print:text-slate-900">{new Date().toLocaleDateString('tr-TR')}</b>
+          </span>
+          <span>
+            Format: <b className="text-white print:text-[#0f4c81]">Yatay A3 (Landscape), Renkli</b>
           </span>
         </div>
       </div>
 
-      {/* KPI Box Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
-          <div className="text-2xl sm:text-3xl font-black text-yellow-400 font-mono">{totalPlanned}</div>
-          <div className="text-xs text-slate-400 font-bold mt-1">Planlanan Bakım</div>
+      {/* KPI Box Grid (Print Friendly White Background + Vivid Colors) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 print:grid-cols-6">
+        <div className="bg-[#121824] print:bg-[#f0f9ff] p-3.5 rounded-xl border border-slate-800 print:border-2 print:border-[#bae6fd] shadow-md text-center">
+          <div className="text-2xl sm:text-3xl font-black text-yellow-400 print:text-[#0284c7] font-mono">{totalPlanned}</div>
+          <div className="text-xs text-slate-400 print:text-[#0369a1] font-bold mt-1 uppercase">Planlanan</div>
         </div>
 
-        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
-          <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">{totalCompleted}</div>
-          <div className="text-xs text-emerald-400 font-bold mt-1">Yapılan Kontrol</div>
+        <div className="bg-[#121824] print:bg-[#ecfdf5] p-3.5 rounded-xl border border-slate-800 print:border-2 print:border-[#a7f3d0] shadow-md text-center">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-400 print:text-[#059669] font-mono">{totalCompleted}</div>
+          <div className="text-xs text-emerald-400 print:text-[#047857] font-bold mt-1 uppercase">Yapılan</div>
         </div>
 
-        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
-          <div className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">{pendingCount}</div>
-          <div className="text-xs text-amber-400 font-bold mt-1">Bekleyen</div>
+        <div className="bg-[#121824] print:bg-[#fffbeb] p-3.5 rounded-xl border border-slate-800 print:border-2 print:border-[#fde68a] shadow-md text-center">
+          <div className="text-2xl sm:text-3xl font-black text-amber-400 print:text-[#d97706] font-mono">{pendingCount}</div>
+          <div className="text-xs text-amber-400 print:text-[#b45309] font-bold mt-1 uppercase">Bekleyen</div>
         </div>
 
-        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
-          <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">{uygunCount}</div>
-          <div className="text-xs text-emerald-400 font-bold mt-1">UYGUN</div>
+        <div className="bg-[#121824] print:bg-[#f0fdf4] p-3.5 rounded-xl border border-slate-800 print:border-2 print:border-[#bbf7d0] shadow-md text-center">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-400 print:text-[#16a34a] font-mono">{uygunCount}</div>
+          <div className="text-xs text-emerald-400 print:text-[#15803d] font-bold mt-1 uppercase">UYGUN</div>
         </div>
 
-        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
-          <div className="text-2xl sm:text-3xl font-black text-rose-400 font-mono">{redCount}</div>
-          <div className="text-xs text-rose-400 font-bold mt-1">RED (Arıza)</div>
+        <div className="bg-[#121824] print:bg-[#fef2f2] p-3.5 rounded-xl border border-slate-800 print:border-2 print:border-[#fecaca] shadow-md text-center">
+          <div className="text-2xl sm:text-3xl font-black text-rose-400 print:text-[#dc2626] font-mono">{redCount}</div>
+          <div className="text-xs text-rose-400 print:text-[#b91c1c] font-bold mt-1 uppercase">RED (Arıza)</div>
         </div>
 
-        <div className="bg-[#121824] p-4 rounded-xl border border-slate-800 shadow-md">
-          <div className="text-2xl sm:text-3xl font-black text-yellow-400 font-mono">%{completionRate}</div>
-          <div className="text-xs text-yellow-400 font-bold mt-1">Tamamlanma Oranı</div>
+        <div className="bg-[#121824] print:bg-[#f0f7ff] p-3.5 rounded-xl border border-slate-800 print:border-2 print:border-[#bfdbfe] shadow-md text-center">
+          <div className="text-2xl sm:text-3xl font-black text-yellow-400 print:text-[#0f4c81] font-mono">%{completionRate}</div>
+          <div className="text-xs text-yellow-400 print:text-[#0f4c81] font-bold mt-1 uppercase">Tamamlanma</div>
         </div>
       </div>
 
       {/* Machine Breakdown Table */}
-      <div className="bg-[#121824] rounded-2xl border border-slate-800 shadow-md overflow-hidden">
-        <div className="p-4 bg-[#0e131d] border-b border-slate-800 flex items-center justify-between">
-          <h3 className="font-black text-base text-white">
+      <div className="bg-[#121824] print:bg-white rounded-2xl print:rounded-lg border border-slate-800 print:border print:border-slate-300 shadow-md overflow-hidden">
+        <div className="p-4 bg-[#0e131d] print:bg-slate-100 border-b border-slate-800 print:border-slate-300 flex items-center justify-between">
+          <h3 className="font-black text-base text-white print:text-[#0f2d4d]">
             Makine Bazında Durum ({machineBreakdown.length} Bakımlı Makine)
           </h3>
-          <span className="text-xs text-yellow-400 font-semibold">
+          <span className="text-xs text-yellow-400 print:text-slate-600 font-semibold">
             Yalnızca bakımı tanımlı olan makineler listelenir
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm text-slate-200">
-            <thead className="bg-black text-yellow-400 font-black text-xs uppercase border-b border-yellow-500/40">
+          <table className="w-full text-left text-xs sm:text-sm text-slate-200 print:text-slate-900">
+            <thead className="bg-black print:bg-[#0f4c81] text-yellow-400 print:text-white font-black text-xs uppercase border-b border-yellow-500/40 print:border-none">
               <tr>
                 <th className="py-2.5 px-4">Makine</th>
                 <th className="py-2.5 px-3 text-right">Plan</th>
@@ -649,6 +670,40 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Official Document Codes & Approval Block (Döküman Kodları & İmzalar - Google E-Tablo verisi) */}
+      <div className="bg-[#121824] print:bg-white p-4 sm:p-5 rounded-2xl border border-slate-800 print:border-slate-300 shadow-md space-y-3">
+        <div className="border border-slate-700 print:border-slate-300 rounded-xl overflow-hidden">
+          <div className="bg-[#0f4c81] text-white px-4 py-2 font-black text-xs uppercase tracking-wider flex items-center justify-between">
+            <span>DÖKÜMAN KONTROL VE ONAY BİLGİLERİ (AKG TS EN ISO DOKÜMANTASYON SİSTEMİ)</span>
+            <span className="font-mono text-yellow-400 print:text-yellow-300">IZM 350522_BKM_015</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-700 print:divide-slate-300 bg-[#0e131d] print:bg-slate-50 text-xs">
+            <div className="p-3 text-center">
+              <span className="text-[10px] text-slate-400 print:text-slate-600 font-bold block uppercase">Hazırlayan / İmza</span>
+              <span className="font-black text-white print:text-slate-900 text-sm block mt-1">FUAT ÇETİN</span>
+              <span className="text-[9px] text-slate-500 block">Bakım & Sistem Yön.</span>
+            </div>
+            <div className="p-3 text-center">
+              <span className="text-[10px] text-slate-400 print:text-slate-600 font-bold block uppercase">Onaylayan / İmza</span>
+              <span className="font-black text-white print:text-slate-900 text-sm block mt-1">FUAT ÇETİN</span>
+              <span className="text-[9px] text-slate-500 block">Fabrika / Bakım Onayı</span>
+            </div>
+            <div className="p-3 text-center">
+              <span className="text-[10px] text-slate-400 print:text-slate-600 font-bold block uppercase">Yayın Tarihi</span>
+              <span className="font-bold text-slate-200 print:text-slate-900 text-sm block mt-1">16.06.2020</span>
+            </div>
+            <div className="p-3 text-center">
+              <span className="text-[10px] text-slate-400 print:text-slate-600 font-bold block uppercase">Revizyon No / Tarihi</span>
+              <span className="font-bold text-yellow-400 print:text-blue-800 text-sm block mt-1">REV1 / 16.06.2020</span>
+            </div>
+            <div className="p-3 text-center col-span-2 sm:col-span-1">
+              <span className="text-[10px] text-slate-400 print:text-slate-600 font-bold block uppercase">Doküman Kodu</span>
+              <span className="font-mono font-black text-rose-400 print:text-red-700 text-sm block mt-1">IZM 350522_BKM_015</span>
+            </div>
+          </div>
         </div>
       </div>
 

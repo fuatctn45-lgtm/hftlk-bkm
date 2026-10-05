@@ -398,8 +398,9 @@ export const cmmsApi = {
     let imageName = '';
     let imageType = '';
 
-    if (record.proofImageUrl && record.proofImageUrl.startsWith('data:')) {
-      const parts = record.proofImageUrl.split(',');
+    const imgData = record.proofImageUrl || (record as any).photoDataUrl;
+    if (imgData && typeof imgData === 'string' && imgData.startsWith('data:')) {
+      const parts = imgData.split(',');
       imageBase64 = parts[1] || '';
       const mimeMatch = parts[0].match(/data:(.*?);base64/);
       imageType = mimeMatch ? mimeMatch[1] : 'image/jpeg';

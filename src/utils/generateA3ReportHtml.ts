@@ -230,10 +230,11 @@ export function generateA3LandscapeReportHtml(data: A3ReportData): string {
             Endüstriyel Tesis & Ekipman Bakım Güvencesi • Yatay A3 Formatı
           </div>
         </td>
-        <td style="vertical-align:middle; text-align:right; width:240px;">
+        <td style="vertical-align:middle; text-align:right; width:260px;">
           <div style="display:inline-block; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); padding:6px 12px; border-radius:8px; text-align:right;">
-            <div style="font-size:10px; color:#e2e8f0; font-weight:700;">DOKÜMAN TİPİ:</div>
-            <div style="font-size:12px; font-weight:900; color:#38bdf8;">RESMİ BAKIM RAPORU</div>
+            <div style="font-size:9px; color:#e2e8f0; font-weight:700;">DOKÜMAN KODU:</div>
+            <div style="font-size:13px; font-weight:900; color:#38bdf8; font-family:monospace;">IZM 350522_BKM_015</div>
+            <div style="font-size:9px; color:#cbd5e1; font-weight:600; margin-top:2px;">REV1 / 16.06.2020 • YATAY A3</div>
           </div>
         </td>
       </tr>
@@ -378,27 +379,39 @@ export function generateA3LandscapeReportHtml(data: A3ReportData): string {
     </table>
   </div>
 
-  <!-- ONAY & İMZA ALANI (A3 LANDSCAPE BOTTOM) -->
+  <!-- RESMİ DOKÜMAN KONTROL, ONAY & İMZA ALANI (A3 LANDSCAPE) -->
   <div style="margin-top:14px; page-break-inside:avoid;">
-    <table style="width:100%; border:1px solid #cbd5e1; border-radius:8px; background:#f8fafc; padding:8px; border-collapse:separate; border-spacing:8px 0;">
-      <tr>
-        <td style="width:33.3%; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:10px; text-align:center;">
-          <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Kontrolü Yapan Operatör / Teknisyen</div>
-          <div style="font-size:12px; font-weight:900; color:#0f2d4d; margin-top:4px;">${escapeHtml(operatorName)}</div>
-          <div style="height:35px; border-bottom:1px dashed #94a3b8; margin:8px 20px 4px 20px;"></div>
-          <div style="font-size:9px; color:#94a3b8;">İmza / Tarih</div>
+    <!-- DÖKÜMAN KODLARI TABLOSU (Google E-Tablo Kaydı) -->
+    <table style="width:100%; border:2px solid #0f4c81; border-radius:8px; background:#ffffff; border-collapse:collapse; margin-bottom:8px; overflow:hidden;">
+      <tr style="background:#0f4c81; color:#ffffff;">
+        <th colspan="5" style="padding:6px 12px; font-size:11px; font-weight:900; text-align:left; letter-spacing:0.5px;">
+          DÖKÜMAN KONTROL VE ONAY BİLGİLERİ (AKG TS EN ISO DOKÜMANTASYON SİSTEMİ)
+        </th>
+      </tr>
+      <tr style="background:#f1f5f9; font-size:10px; font-weight:800; color:#1e293b; border-bottom:1px solid #cbd5e1; text-align:center;">
+        <td style="padding:7px 8px; border-right:1px solid #cbd5e1; width:20%;">HAZIRLAYAN / İMZA</td>
+        <td style="padding:7px 8px; border-right:1px solid #cbd5e1; width:20%;">ONAYLAYAN / İMZA</td>
+        <td style="padding:7px 8px; border-right:1px solid #cbd5e1; width:20%;">YAYIN TARİHİ</td>
+        <td style="padding:7px 8px; border-right:1px solid #cbd5e1; width:20%;">REVİZYON NO / TARİHİ</td>
+        <td style="padding:7px 8px; width:20%;">DOKÜMAN KODU</td>
+      </tr>
+      <tr style="background:#ffffff; font-size:11px; font-weight:900; color:#0f2d4d; text-align:center;">
+        <td style="padding:9px 8px; border-right:1px solid #cbd5e1;">
+          <div style="font-size:12px; color:#0f2d4d;">FUAT ÇETİN</div>
+          <div style="font-size:9px; color:#64748b; font-weight:600; margin-top:2px;">Bakım & Sistem Yöneticisi</div>
         </td>
-        <td style="width:33.3%; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:10px; text-align:center;">
-          <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Bakım Kısım Sorumlusu / Şefi</div>
-          <div style="font-size:12px; font-weight:900; color:#0f2d4d; margin-top:4px;">ENGİN VARDAR</div>
-          <div style="height:35px; border-bottom:1px dashed #94a3b8; margin:8px 20px 4px 20px;"></div>
-          <div style="font-size:9px; color:#94a3b8;">İmza / Tarih</div>
+        <td style="padding:9px 8px; border-right:1px solid #cbd5e1;">
+          <div style="font-size:12px; color:#0f2d4d;">FUAT ÇETİN</div>
+          <div style="font-size:9px; color:#64748b; font-weight:600; margin-top:2px;">Fabrika / Bakım Onayı</div>
         </td>
-        <td style="width:33.3%; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:10px; text-align:center;">
-          <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Bakım Müdürü / Yönetim Onayı</div>
-          <div style="font-size:12px; font-weight:900; color:#0f2d4d; margin-top:4px;">AKG Fabrika Yönetimi</div>
-          <div style="height:35px; border-bottom:1px dashed #94a3b8; margin:8px 20px 4px 20px;"></div>
-          <div style="font-size:9px; color:#94a3b8;">Kaşe / İmza</div>
+        <td style="padding:9px 8px; border-right:1px solid #cbd5e1; color:#334155; font-size:12px;">
+          16.06.2020
+        </td>
+        <td style="padding:9px 8px; border-right:1px solid #cbd5e1; color:#0f4c81; font-size:12px;">
+          REV1 / 16.06.2020
+        </td>
+        <td style="padding:9px 8px; color:#b91c1c; font-family:monospace; font-size:13px; font-weight:900;">
+          IZM 350522_BKM_015
         </td>
       </tr>
     </table>
@@ -406,7 +419,7 @@ export function generateA3LandscapeReportHtml(data: A3ReportData): string {
 
   <!-- FOOTER -->
   <div style="margin-top:10px; font-size:9px; color:#64748b; text-align:center; border-top:1px solid #e2e8f0; padding-top:6px;">
-    AKG Termoteknik Sistemler San. ve Tic. Ltd. Şti. • Haftalık Bakım CMMS V5.4.42 • Bu doküman dijital CMMS sistemi tarafından otomatik oluşturulmuştur. (Format: Yatay A3 / Renkli)
+    AKG Termoteknik Sistemler San. ve Tic. Ltd. Şti. • Doküman No: <b>IZM 350522_BKM_015</b> • Rev: 1 (16.06.2020) • Hazırlayan / Onaylayan: <b>FUAT ÇETİN</b> • Format: Yatay A3 (Landscape), Renkli
   </div>
 
 </body>
