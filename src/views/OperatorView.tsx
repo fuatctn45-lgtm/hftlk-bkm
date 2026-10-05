@@ -204,7 +204,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const [wrongQrModal, setWrongQrModal] = useState<{ expected: string; scanned: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanLoopRef = useRef<number | null>(null);
-  const qrPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Control / Form state
   const [measuredValue, setMeasuredValue] = useState('');
@@ -489,7 +488,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         scanLoopRef.current = requestAnimationFrame(scanFrame);
       } catch (err: any) {
         console.warn('Camera error:', err);
-        setQrError('Kamera başlatılamadı. Lütfen kamera izinlerini kontrol ediniz veya alttaki "Fotoğraftan QR Oku" butonunu kullanınız.');
+        setQrError('Kamera başlatılamadı. Lütfen kamera izinlerinizi kontrol edip sayfayı yenileyiniz.');
       }
     };
 
@@ -505,52 +504,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       }
     };
   }, [subStep, qrScanning, selectedMachine]);
-
-  // Decode QR code from captured photo or uploaded file
-  const handleQrPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-
-          // 1. Try native BarcodeDetector
-          if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-            try {
-              const bd = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-              const codes = await bd.detect(canvas);
-              if (codes && codes.length > 0 && codes[0].rawValue) {
-                handleVerifyQrCode(codes[0].rawValue);
-                return;
-              }
-            } catch {}
-          }
-
-          // 2. jsQR
-          const imgData = ctx.getImageData(0, 0, img.width, img.height);
-          const code = jsQR(imgData.data, img.width, img.height, {
-            inversionAttempts: 'attemptBoth',
-          });
-          if (code && code.data) {
-            handleVerifyQrCode(code.data);
-            return;
-          }
-
-          alert('Fotoğrafta geçerli bir QR kod okunamadı. Lütfen etiketi net ve aydınlık olarak tekrar çekiniz.');
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Select a task to perform control
   const handleOpenTask = (task: MaintenanceTemplate) => {
@@ -1041,7 +994,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
           {/* QR Viewfinder Container with Yellow Laser */}
           <div className="relative aspect-square max-w-[260px] mx-auto rounded-3xl overflow-hidden bg-black border-4 border-yellow-400/50 shadow-inner flex items-center justify-center">
-            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
             <div className="absolute inset-0 border-2 border-dashed border-yellow-400/60 m-6 rounded-2xl pointer-events-none" />
             <div className="absolute inset-x-0 h-1 bg-yellow-400 shadow-[0_0_15px_#facc15] animate-scan-sweep pointer-events-none" />
           </div>
@@ -1056,24 +1009,21 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             </div>
           )}
 
-          {/* Verification & Action Buttons */}
+          {/* Presence Verification & Action Buttons */}
           <div className="space-y-2 pt-1">
-            {/* Alternative: Snap / Upload QR Photo if video stream has focus issues */}
-            <label className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">
-              <Camera className="w-4 h-4 text-yellow-400" />
-              <span>QR Fotoğrafı Çek / Yükle</span>
-              <input
-                ref={qrPhotoInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleQrPhotoUpload}
-                className="hidden"
-              />
-            </label>
-
-            {/* ONLY FOR ADMINS: Admin Bypass Button */}
-            {isAdmin && (
+            {/* Presence Mandatory Warning for Non-Admin Operators */}
+            {!isAdmin ? (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-center">
+                <div className="flex items-center justify-center gap-1.5 text-yellow-400 font-black text-xs mb-1">
+                  <ShieldAlert className="w-4 h-4 text-yellow-400 shrink-0" />
+                  <span>Makine Başı Fiziki Kontrol Zorunludur</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Bakım adımlarına geçebilmek için makinenin yanına gidip sarı QR etiketini canlı kameraya okutmanız gerekmektedir.
+                </p>
+              </div>
+            ) : (
+              /* ONLY FOR ADMINS: Admin Bypass Button */
               <button
                 type="button"
                 onClick={() => setSubStep('tasks')}
@@ -1086,7 +1036,10 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
             <button
               type="button"
-              onClick={() => setSubStep('machines')}
+              onClick={() => {
+                setQrScanning(false);
+                setSubStep('machines');
+              }}
               className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold rounded-xl text-xs transition-colors cursor-pointer"
             >
               Farklı Makine Seç
