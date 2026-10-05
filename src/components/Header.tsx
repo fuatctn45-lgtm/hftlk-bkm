@@ -155,22 +155,17 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="bg-yellow-400 text-black rounded-lg px-1.5 py-0.5 shadow-xs group-hover:scale-102 transition-transform shrink-0 border border-yellow-300 flex items-center justify-center">
             <AkgLogo size="xs" />
           </div>
-          <div className="flex flex-col justify-center">
-            <span className="text-sm sm:text-base font-black tracking-tight leading-none text-yellow-400">
-              AKG CMMS
+          {/* Operator name */}
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+            <span className="font-bold text-white">
+              {operatorName}
             </span>
-            {/* Operator name on tablet/desktop */}
-            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-300 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
-              <span className="font-semibold text-slate-200">
-                {operatorName}
+            {isAdmin && (
+              <span className="bg-yellow-400 text-black font-black text-[8px] px-1 py-0.5 rounded uppercase tracking-wider shrink-0 leading-none">
+                YÖNETİCİ
               </span>
-              {isAdmin && (
-                <span className="bg-yellow-400 text-black font-black text-[8px] px-1 py-0.2 rounded uppercase tracking-wider shrink-0 leading-none">
-                  YÖNETİCİ
-                </span>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
