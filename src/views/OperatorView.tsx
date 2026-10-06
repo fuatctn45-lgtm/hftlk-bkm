@@ -6,6 +6,7 @@ import {
   MaintenanceRecord,
   UserSession,
   DEPARTMENTS,
+  DepartmentConfig,
 } from '../types/cmms';
 import { getWeekKey, cmmsApi } from '../services/cmmsApi';
 import { uploadQueueService, QueuedRecord } from '../services/uploadQueue';

@@ -41,6 +41,9 @@ export interface MaintenanceRecord {
   proofImageUrl?: string;
   weekKey: string;
   createdAt: string;
+  date?: string;
+  time?: string;
+  operatorRole?: string;
   task?: string;
   system?: Department;
   targetValue?: string;

@@ -42,8 +42,9 @@ function filterMachinesWithTasks(rawMachines: Machine[], rawTemplates: Maintenan
   // Şablonda tanımlı olup makine listesinde adı geçen makineleri de dahil et
   for (const tmpl of activeTemplates) {
     if (!tmpl.machineName) continue;
+    const tmplName = tmpl.machineName.trim().toLowerCase();
     const exists = withTasks.some(
-      (m) => m.machineName.trim().toLowerCase() === tmpl.machineName.trim().toLowerCase()
+      (m) => (m.machineName || '').trim().toLowerCase() === tmplName
     );
     if (!exists) {
       withTasks.push({

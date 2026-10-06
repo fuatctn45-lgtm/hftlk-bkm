@@ -561,9 +561,35 @@ export const cmmsApi = {
       const isPng = imgName.toLowerCase().endsWith('.png');
       const imgType = isPng ? 'image/png' : 'image/jpeg';
 
+      let resolvedImageUrl = template.referenceImageUrl;
+
+      // If user uploaded a new image (base64 data URL):
+      if (template.referenceImageUrl && template.referenceImageUrl.startsWith('data:')) {
+        try {
+          const uploadRes = await fetch('/api/cmms/upload-template-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              imageBase64: template.referenceImageUrl,
+              imageName: imgName,
+              templateId: template.templateId || 'TMP',
+            }),
+          });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            if (uploadData.success && uploadData.imageUrl) {
+              resolvedImageUrl = uploadData.imageUrl;
+            }
+          }
+        } catch (upErr) {
+          console.warn('Local image upload error:', upErr);
+        }
+      }
+
       const payloadObj: any = {
         ...template,
         templateId: template.templateId || '',
+        referenceImageUrl: resolvedImageUrl,
         referenceImageName: imgName,
         imageName: imgName,
       };
@@ -588,6 +614,7 @@ export const cmmsApi = {
                 ...t,
                 ...payloadObj,
                 templateId: targetId,
+                referenceImageUrl: resolvedImageUrl || t.referenceImageUrl,
               };
             }
             return t;
@@ -607,7 +634,7 @@ export const cmmsApi = {
         return {
           success: true,
           templateId: targetId,
-          message: updateData?.message || 'Bakım tanımı güncellendi.',
+          message: updateData?.message || 'Bakım tanımı ve görseli güncellendi.',
         };
       }
 

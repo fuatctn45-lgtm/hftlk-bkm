@@ -19,6 +19,10 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Static serving for uploaded reference images
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'public/uploads')));
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'dist/uploads')));
+
 // Shared Gemini AI SDK client
 const apiKey = process.env.GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({
@@ -540,6 +544,47 @@ app.get('/api/drive-image/:id', async (req, res) => {
     'base64'
   );
   return res.send(transparentPng);
+});
+
+/**
+ * Upload and persist template reference image (eliminates 414 URI Too Long & Drive auth errors)
+ */
+app.post('/api/cmms/upload-template-image', (req, res) => {
+  try {
+    const { imageBase64, imageName = 'ref.jpg', templateId = 'TMP' } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ success: false, message: 'Görsel verisi boş' });
+    }
+
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    const ext = imageName.toLowerCase().endsWith('.png') ? 'png' : 'jpg';
+    const safeTid = String(templateId).replace(/[^a-zA-Z0-9_-]/g, '');
+    const fileName = `ref_${safeTid}_${Date.now()}.${ext}`;
+
+    const uploadDirs = [
+      path.resolve(process.cwd(), 'public/uploads/templates'),
+      path.resolve(process.cwd(), 'dist/uploads/templates'),
+    ];
+
+    for (const dir of uploadDirs) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(dir, fileName), buffer);
+    }
+
+    const relativeUrl = `/uploads/templates/${fileName}`;
+    return res.json({
+      success: true,
+      imageUrl: relativeUrl,
+      fileName,
+    });
+  } catch (err: any) {
+    console.error('Template image upload error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 /**
