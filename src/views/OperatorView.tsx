@@ -34,6 +34,8 @@ import {
   Layers,
   Wrench,
   CheckCircle,
+  MapPin,
+  Filter,
 } from 'lucide-react';
 
 interface OperatorViewProps {
@@ -382,6 +384,43 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // Tasks for selected machine
   const machineTasks = selectedMachine ? getMachineTasks(selectedMachine) : [];
 
+  // Regional filter state (e.g. "AZOT SİSTEMİ", "FAN SİSTEMİ", etc.)
+  const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>('all');
+
+  // Distinct regions available in the current machine's tasks with completion stats
+  const availableRegions = React.useMemo(() => {
+    if (!selectedMachine) return [];
+    const map = new Map<string, { total: number; completed: number; hasRed: boolean }>();
+
+    machineTasks.forEach((t) => {
+      const reg = (t.region || '').trim() || 'GENEL';
+      const st = getTaskStatus(selectedMachine.id, t.templateId);
+      const cur = map.get(reg) || { total: 0, completed: 0, hasRed: false };
+      cur.total += 1;
+      if (st !== 'bekleyen') cur.completed += 1;
+      if (st === 'red') cur.hasRed = true;
+      map.set(reg, cur);
+    });
+
+    return Array.from(map.entries())
+      .map(([name, stats]) => ({
+        name,
+        ...stats,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr-TR'));
+  }, [machineTasks, selectedMachine, records]);
+
+  // Tasks filtered by region
+  const displayedTasks = React.useMemo(() => {
+    return machineTasks.filter((t) => {
+      const reg = (t.region || '').trim() || 'GENEL';
+      if (selectedRegionFilter !== 'all' && reg !== selectedRegionFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [machineTasks, selectedRegionFilter]);
+
   // Filtered machines by status and search
   const [machineStatusFilter, setMachineStatusFilter] = useState<'all' | 'pending' | 'completed' | 'hasRed'>('all');
 
@@ -406,6 +445,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // QR Selection Flow
   const handleSelectMachine = (machine: Machine) => {
     setSelectedMachine(machine);
+    setSelectedRegionFilter('all');
     // If admin, bypass QR verification
     if (isAdmin) {
       setSubStep('tasks');
@@ -694,9 +734,14 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       });
       onRecordSaved();
 
-      // 3. Find next pending task on this machine (0ms wait, smooth transition)
-      const currentIndex = machineTasks.findIndex((t) => t.templateId === selectedTask.templateId);
-      const nextPendingTask = machineTasks.find(
+      // 3. Find next pending task on this machine (prioritizing the currently active region)
+      const candidateList =
+        selectedRegionFilter !== 'all'
+          ? machineTasks.filter((t) => ((t.region || '').trim() || 'GENEL') === selectedRegionFilter)
+          : machineTasks;
+
+      const currentIndex = candidateList.findIndex((t) => t.templateId === selectedTask.templateId);
+      const nextPendingTask = candidateList.find(
         (t, idx) =>
           idx > currentIndex &&
           t.templateId !== selectedTask.templateId &&
@@ -1185,9 +1230,123 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           ))}
         </div>
 
+        {/* Regional Filter Bar (Bölgesel Filtre / Alan Seçimi) */}
+        {availableRegions.length > 0 && (
+          <div className="bg-[#1b263b] p-3.5 sm:p-4 rounded-2xl border border-yellow-500/30 shadow-md space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-yellow-400/20 text-yellow-400 flex items-center justify-center border border-yellow-400/30 shrink-0 shadow-inner">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    Bölgesel Filtre
+                    <span className="text-[11px] font-bold text-yellow-400 normal-case bg-yellow-400/10 px-2 py-0.5 rounded-md border border-yellow-400/30">
+                      {selectedRegionFilter === 'all' ? 'Tüm Bölgeler' : selectedRegionFilter}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Bulunduğunuz alana göre filtreleyip sadece o bölgenin kontrollerini yapabilirsiniz.
+                  </p>
+                </div>
+              </div>
+
+              {selectedRegionFilter !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedRegionFilter('all')}
+                  className="text-xs font-bold text-yellow-400 hover:text-yellow-300 flex items-center gap-1 cursor-pointer bg-yellow-400/10 px-2.5 py-1 rounded-lg border border-yellow-400/30 hover:bg-yellow-400/20 transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Filtreyi Sıfırla</span>
+                </button>
+              )}
+            </div>
+
+            {/* Region selection buttons */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setSelectedRegionFilter('all')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
+                  selectedRegionFilter === 'all'
+                    ? 'bg-yellow-400 text-black border-yellow-300 shadow-md shadow-yellow-500/20 scale-[1.02]'
+                    : 'bg-[#141d2d] text-slate-300 border-slate-700 hover:border-yellow-400/50 hover:bg-[#1a253a]'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Tümü</span>
+                <span
+                  className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-md ${
+                    selectedRegionFilter === 'all' ? 'bg-black/25 text-black' : 'bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  {machineTasks.length}
+                </span>
+              </button>
+
+              {availableRegions.map((reg) => {
+                const isSelected = selectedRegionFilter === reg.name;
+                const isCompleted = reg.completed >= reg.total;
+
+                return (
+                  <button
+                    key={reg.name}
+                    type="button"
+                    onClick={() => setSelectedRegionFilter(reg.name)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
+                      isSelected
+                        ? 'bg-yellow-400 text-black border-yellow-300 shadow-md shadow-yellow-500/25 scale-[1.02]'
+                        : isCompleted
+                        ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/40'
+                        : reg.hasRed
+                        ? 'bg-rose-950/40 text-rose-300 border-rose-500/40 hover:bg-rose-900/40'
+                        : 'bg-[#141d2d] text-slate-300 border-slate-700 hover:border-yellow-400/50 hover:bg-[#1a253a]'
+                    }`}
+                  >
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    <span>{reg.name}</span>
+                    <span
+                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-md ${
+                        isSelected
+                          ? 'bg-black/25 text-black'
+                          : isCompleted
+                          ? 'bg-emerald-500/30 text-emerald-200'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {reg.completed}/{reg.total}
+                    </span>
+                    {isCompleted && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Task List Items */}
-        <div className="space-y-2 sm:space-y-2.5">
-          {machineTasks.map((t, idx) => {
+        {displayedTasks.length === 0 ? (
+          <div className="bg-[#1b263b] p-8 rounded-2xl border border-slate-800 text-center space-y-3 shadow-md">
+            <div className="w-12 h-12 rounded-full bg-yellow-400/10 text-yellow-400 flex items-center justify-center mx-auto">
+              <MapPin className="w-6 h-6" />
+            </div>
+            <div className="text-sm font-bold text-white">Bu bölgede kontrol maddesi bulunamadı</div>
+            <p className="text-xs text-slate-400">
+              Seçili bölge ({selectedRegionFilter}) için bu makinede henüz atanmış kontrol maddesi bulunmuyor.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedRegionFilter('all')}
+              className="px-4 py-2 rounded-xl bg-yellow-400 text-black font-black text-xs cursor-pointer hover:bg-yellow-300 transition-all inline-flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Tüm Bölgeleri Göster</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2 sm:space-y-2.5">
+            {displayedTasks.map((t, idx) => {
             const st = getTaskStatus(selectedMachine!.id, t.templateId);
             const dept = getDepartmentConfig(t.system);
             const deptStyle = getDeptDisplayStyle(dept);
@@ -1286,6 +1445,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             );
           })}
         </div>
+      )}
       </div>
     );
   }
