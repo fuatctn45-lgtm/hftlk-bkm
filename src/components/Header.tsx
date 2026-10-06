@@ -39,6 +39,20 @@ interface HeaderProps {
   recordsCount?: number;
 }
 
+// Kısa isim formatlayıcı (Örn: "Fuat Çetin" -> "F.Çetin")
+export function formatShortOperatorName(name?: string): string {
+  if (!name) return 'Operatör';
+  const clean = name.trim();
+  const parts = clean.split(/\s+/);
+  if (parts.length < 2) return clean;
+  const firstInitial = parts[0].charAt(0).toUpperCase();
+  const lastName = parts
+    .slice(1)
+    .map((p) => (p.length ? p.charAt(0).toUpperCase() + p.slice(1).toLocaleLowerCase('tr-TR') : ''))
+    .join(' ');
+  return `${firstInitial}.${lastName}`;
+}
+
 export const Header: React.FC<HeaderProps> = ({
   currentScreen,
   onNavigate,
@@ -167,11 +181,11 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="bg-yellow-400 text-black rounded-lg px-1.5 py-0.5 shadow-xs group-hover:scale-102 transition-transform shrink-0 border border-yellow-300 flex items-center justify-center">
             <AkgLogo size="xs" />
           </div>
-          {/* Operator name */}
+          {/* Operator name (Kısa format: F.Çetin) */}
           <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-200">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
-            <span className="font-bold text-white">
-              {operatorName}
+            <span className="font-bold text-white tracking-wide" title={operatorName}>
+              {formatShortOperatorName(operatorName)}
             </span>
             {isAdmin && (
               <span className="bg-yellow-400 text-black font-black text-[8px] px-1 py-0.5 rounded uppercase tracking-wider shrink-0 leading-none">

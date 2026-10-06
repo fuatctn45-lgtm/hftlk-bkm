@@ -272,13 +272,13 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     );
   };
 
-  // Helper: resolve Google Drive URL to Android-compatible proxy / direct CDN
+  // Helper: resolve Google Drive URL to direct CDN format
   const resolveDriveImageUrl = (url?: string | null): string => {
     if (!url) return '';
     if (url.startsWith('data:')) return url;
     const fId = extractDriveFileId(url);
     if (fId) {
-      return `/api/drive-image/${fId}`;
+      return `https://lh3.googleusercontent.com/d/${fId}=w1000`;
     }
     return url;
   };
@@ -1323,11 +1323,14 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               src={resolveDriveImageUrl(selectedTask.referenceImageUrl)}
               alt="Referans Resim"
               referrerPolicy="no-referrer"
-              crossOrigin="anonymous"
               onError={(e) => {
                 const fId = extractDriveFileId(selectedTask.referenceImageUrl);
-                if (fId && !e.currentTarget.src.includes('lh3.googleusercontent')) {
-                  e.currentTarget.src = `https://lh3.googleusercontent.com/d/${fId}=w1000`;
+                if (!fId) return;
+                const current = e.currentTarget.src;
+                if (current.includes('lh3.googleusercontent')) {
+                  e.currentTarget.src = `https://drive.google.com/thumbnail?id=${fId}&sz=w1000`;
+                } else if (current.includes('thumbnail')) {
+                  e.currentTarget.src = `https://drive.google.com/uc?export=view&id=${fId}`;
                 }
               }}
               className="w-full h-full object-contain"
@@ -1662,11 +1665,14 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               src={resolveDriveImageUrl(selectedTask.referenceImageUrl)}
               alt="Referans Resim"
               referrerPolicy="no-referrer"
-              crossOrigin="anonymous"
               onError={(e) => {
                 const fId = extractDriveFileId(selectedTask.referenceImageUrl);
-                if (fId && !e.currentTarget.src.includes('lh3.googleusercontent')) {
-                  e.currentTarget.src = `https://lh3.googleusercontent.com/d/${fId}=w1600`;
+                if (!fId) return;
+                const current = e.currentTarget.src;
+                if (current.includes('lh3.googleusercontent')) {
+                  e.currentTarget.src = `https://drive.google.com/thumbnail?id=${fId}&sz=w1600`;
+                } else if (current.includes('thumbnail')) {
+                  e.currentTarget.src = `https://drive.google.com/uc?export=view&id=${fId}`;
                 }
               }}
               className="max-w-full max-h-[80vh] object-contain rounded-2xl bg-black border border-yellow-500/40 shadow-2xl"
