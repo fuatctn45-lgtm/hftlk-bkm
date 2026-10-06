@@ -344,8 +344,26 @@ export const cmmsApi = {
       const data = await callCmmsApi('listMaintenanceTemplatesCached', params, { timeout: 15000 });
 
       if (data && data.success && Array.isArray(data.templates) && data.templates.length > 0) {
-        localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(data.templates));
-        return data.templates;
+        // De-duplicate templates (merge any duplicate rows created accidentally, adopt newer images)
+        const dedupedMap = new Map<string, MaintenanceTemplate>();
+        data.templates.forEach((t: MaintenanceTemplate) => {
+          const key = `${t.machineId || t.machineName}_${(t.task || '').trim()}`.toLowerCase();
+          if (dedupedMap.has(key)) {
+            const orig = dedupedMap.get(key)!;
+            // If duplicate has an image, copy it onto the original template
+            if (t.referenceImageUrl && !orig.referenceImageUrl) {
+              orig.referenceImageUrl = t.referenceImageUrl;
+            } else if (t.referenceImageUrl && t.templateId !== orig.templateId) {
+              orig.referenceImageUrl = t.referenceImageUrl;
+            }
+          } else {
+            dedupedMap.set(key, { ...t });
+          }
+        });
+
+        const cleanTemplates = Array.from(dedupedMap.values());
+        localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(cleanTemplates));
+        return cleanTemplates;
       }
     } catch (err) {
       console.warn('Could not fetch templates from live sheet, using cache:', err);
@@ -561,43 +579,53 @@ export const cmmsApi = {
       const isPng = imgName.toLowerCase().endsWith('.png');
       const imgType = isPng ? 'image/png' : 'image/jpeg';
 
+      const isStaticHost = typeof window !== 'undefined' && (
+        window.location.hostname.includes('github.io') ||
+        window.location.protocol === 'file:' ||
+        (window.location.hostname === 'localhost' && window.location.port !== '3000')
+      );
+
       let resolvedImageUrl = template.referenceImageUrl;
 
-      // If user uploaded a new image (base64 data URL):
-      if (template.referenceImageUrl && template.referenceImageUrl.startsWith('data:')) {
-        try {
-          const uploadRes = await fetch('/api/cmms/upload-template-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              imageBase64: template.referenceImageUrl,
-              imageName: imgName,
-              templateId: template.templateId || 'TMP',
-            }),
-          });
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            if (uploadData.success && uploadData.imageUrl) {
-              resolvedImageUrl = uploadData.imageUrl;
-            }
-          }
-        } catch (upErr) {
-          console.warn('Local image upload error:', upErr);
-        }
-      }
-
-      const payloadObj: any = {
-        ...template,
-        templateId: template.templateId || '',
-        referenceImageUrl: resolvedImageUrl,
-        referenceImageName: imgName,
-        imageName: imgName,
-      };
-
       // 1. IF UPDATING AN EXISTING TEMPLATE:
-      // Never call createMaintenanceTemplateWithImage here (that creates duplicate rows!)
-      // updateMaintenanceTemplate directly updates the row in Google Sheets in-place.
       if (template.templateId) {
+        // If in Node environment (AI Studio dev), try local storage endpoint
+        if (!isStaticHost && template.referenceImageUrl && template.referenceImageUrl.startsWith('data:')) {
+          try {
+            const uploadRes = await fetch('/api/cmms/upload-template-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                imageBase64: template.referenceImageUrl,
+                imageName: imgName,
+                templateId: template.templateId,
+              }),
+            });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              if (uploadData.success && uploadData.imageUrl) {
+                resolvedImageUrl = uploadData.imageUrl;
+              }
+            }
+          } catch (upErr) {
+            console.warn('Local image upload error:', upErr);
+          }
+        }
+
+        // If still base64 (on GitHub Pages), do not put 2MB base64 into GET query string
+        const safePayloadImageUrl = (resolvedImageUrl && !resolvedImageUrl.startsWith('data:'))
+          ? resolvedImageUrl
+          : (template.referenceImageUrl?.startsWith('data:') ? '' : (template.referenceImageUrl || ''));
+
+        const payloadObj: any = {
+          ...template,
+          templateId: template.templateId,
+          referenceImageUrl: safePayloadImageUrl,
+          referenceImageName: imgName,
+          imageName: imgName,
+        };
+
+        // Call updateMaintenanceTemplate ONLY (NEVER call createMaintenanceTemplateWithImage on edit!)
         const updateData = await callCmmsApi('updateMaintenanceTemplate', {
           payload: JSON.stringify(payloadObj),
         });
@@ -621,8 +649,8 @@ export const cmmsApi = {
           });
           localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(updatedList));
 
-          // Also store in image cache if base64 was provided
-          if (template.referenceImageUrl && template.referenceImageUrl.startsWith('data:')) {
+          // Also store in image cache
+          if (template.referenceImageUrl) {
             localStorage.setItem(`templateImg_${targetId}`, template.referenceImageUrl);
             const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
             map[targetId] = template.referenceImageUrl;
@@ -634,12 +662,19 @@ export const cmmsApi = {
         return {
           success: true,
           templateId: targetId,
-          message: updateData?.message || 'Bakım tanımı ve görseli güncellendi.',
+          message: updateData?.message || 'Bakım tanımı güncellendi.',
         };
       }
 
       // 2. ONLY FOR BRAND NEW TEMPLATES (no templateId):
-      const createRes = await callCmmsApi('createMaintenanceTemplateWithImage', {
+      const payloadObj: any = {
+        ...template,
+        templateId: '',
+        referenceImageName: imgName,
+        imageName: imgName,
+      };
+
+      const createRes = await rawFormPost('createMaintenanceTemplateWithImage', {
         payload: JSON.stringify(payloadObj),
         imageBase64: template.referenceImageUrl?.startsWith('data:') ? template.referenceImageUrl.split(',')[1] : '',
         imageName: imgName,

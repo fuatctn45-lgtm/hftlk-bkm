@@ -2,8 +2,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Register PWA Service Worker for Android & iOS installability
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+// Register PWA Service Worker for Android & iOS installability in production
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (import.meta.env?.PROD || window.location.hostname.includes('github.io'))) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })

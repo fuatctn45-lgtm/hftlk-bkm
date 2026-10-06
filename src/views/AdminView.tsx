@@ -166,7 +166,20 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setOrderNo(t.orderNo || 1);
     setPhotoRequired(Boolean(t.photoRequired));
     setActive(Boolean(t.active));
-    setRefImageBase64(t.referenceImageUrl || null);
+
+    // Check cached image first for instant rendering
+    let initialImg = t.referenceImageUrl || null;
+    try {
+      const cached = localStorage.getItem(`templateImg_${t.templateId}`);
+      if (cached) initialImg = cached;
+      else {
+        const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
+        if (map[t.templateId]) initialImg = map[t.templateId];
+        else if (map[t.task]) initialImg = map[t.task];
+      }
+    } catch {}
+
+    setRefImageBase64(initialImg);
     setRefImageName(t.referenceImageName || t.imageName || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -277,7 +290,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       });
 
       if (res.success) {
-        if (refImageBase64 && refImageBase64.startsWith('data:')) {
+        if (refImageBase64) {
           try {
             const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
             if (res.templateId) map[res.templateId] = refImageBase64;
@@ -878,7 +891,30 @@ export const AdminView: React.FC<AdminViewProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0">
+                            {t.referenceImageUrl && (
+                              <button
+                                type="button"
+                                onClick={() => handleStartEdit(t)}
+                                className="w-10 h-10 rounded-lg overflow-hidden border border-yellow-500/40 bg-slate-900 shrink-0 hover:scale-105 transition-transform"
+                                title="Teknik Şemayı İncele / Değiştir"
+                              >
+                                <img
+                                  src={
+                                    t.referenceImageUrl.startsWith('data:')
+                                      ? t.referenceImageUrl
+                                      : extractDriveFileId(t.referenceImageUrl)
+                                      ? `https://drive.google.com/thumbnail?id=${extractDriveFileId(t.referenceImageUrl)}&sz=w200`
+                                      : t.referenceImageUrl
+                                  }
+                                  alt="Şema"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleStartEdit(t)}
