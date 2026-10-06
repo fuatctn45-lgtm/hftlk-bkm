@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MaintenanceTemplate, Machine, DEPARTMENTS, DepartmentConfig } from '../types/cmms';
 import { cmmsApi } from '../services/cmmsApi';
+import { extractDriveFileId } from './RedListView';
 import {
   Settings,
   Plus,
@@ -47,6 +48,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [active, setActive] = useState(true);
   const [refImageBase64, setRefImageBase64] = useState<string | null>(null);
   const [refImageName, setRefImageName] = useState<string>('');
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setPreviewLoadFailed(false);
+  }, [refImageBase64]);
 
   // Search & Collapsible groups
   const [filterQuery, setFilterQuery] = useState('');
@@ -250,9 +256,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setStatusMessage(null);
 
     try {
+      const selectedMachineObj = machines.find((m) => m.id === machineId || m.machineName === machineId);
+      const machineName = selectedMachineObj?.machineName || machineId;
+
       const res = await cmmsApi.saveTemplate({
         templateId: editingId || '',
         machineId,
+        machineName,
         region: region.trim(),
         system,
         part: part.trim(),
@@ -267,9 +277,21 @@ export const AdminView: React.FC<AdminViewProps> = ({
       });
 
       if (res.success) {
+        if (refImageBase64 && refImageBase64.startsWith('data:')) {
+          try {
+            const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
+            if (res.templateId) map[res.templateId] = refImageBase64;
+            if (editingId) map[editingId] = refImageBase64;
+            map[task.trim()] = refImageBase64;
+            localStorage.setItem('cmms_template_photos_map', JSON.stringify(map));
+            if (res.templateId) localStorage.setItem(`templateImg_${res.templateId}`, refImageBase64);
+            if (editingId) localStorage.setItem(`templateImg_${editingId}`, refImageBase64);
+          } catch {}
+        }
+
         setStatusMessage({
           type: 'success',
-          text: editingId ? 'Bakım tanımı güncellendi.' : 'Yeni bakım tanımı kaydedildi.',
+          text: editingId ? 'Bakım tanımı ve görseli başarıyla güncellendi.' : 'Yeni bakım tanımı kaydedildi.',
         });
         onTemplatesUpdated();
         handleCancelEdit();
@@ -596,11 +618,32 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
               {refImageBase64 && (
                 <div className="flex items-center gap-2.5 bg-[#1b263b] px-3 py-1.5 rounded-xl border border-yellow-500/30">
-                  <img
-                    src={refImageBase64}
-                    alt="Referans Önizleme"
-                    className="w-14 h-12 object-cover rounded-lg border border-yellow-400/50 shadow-sm"
-                  />
+                  {previewLoadFailed && !refImageBase64.startsWith('data:') ? (
+                    <div className="w-14 h-12 rounded-lg bg-yellow-500/20 border border-yellow-400/50 flex flex-col items-center justify-center text-yellow-400 shrink-0">
+                      <Layers className="w-5 h-5" />
+                      <span className="text-[8px] font-black uppercase mt-0.5">ŞEMA</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={
+                        refImageBase64.startsWith('data:')
+                          ? refImageBase64
+                          : extractDriveFileId(refImageBase64)
+                          ? `/api/drive-image/${extractDriveFileId(refImageBase64)}`
+                          : refImageBase64
+                      }
+                      alt="Referans Önizleme"
+                      onError={(e) => {
+                        const fId = extractDriveFileId(refImageBase64);
+                        if (fId && !e.currentTarget.src.includes('thumbnail')) {
+                          e.currentTarget.src = `https://drive.google.com/thumbnail?id=${fId}&sz=w1000`;
+                        } else {
+                          setPreviewLoadFailed(true);
+                        }
+                      }}
+                      className="w-14 h-12 object-cover rounded-lg border border-yellow-400/50 shadow-sm"
+                    />
+                  )}
                   <div className="text-left max-w-xs">
                     <span className="text-xs font-bold text-white block truncate" title={refImageName || 'Teknik Şema'}>
                       {refImageName || 'Teknik Şema Yüklendi'}

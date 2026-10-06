@@ -338,9 +338,10 @@ export const cmmsApi = {
   /**
    * Fetch live maintenance templates from Google Spreadsheet
    */
-  async getTemplates(): Promise<MaintenanceTemplate[]> {
+  async getTemplates(forceRefresh = false): Promise<MaintenanceTemplate[]> {
     try {
-      const data = await callCmmsApi('listMaintenanceTemplatesCached', {}, { timeout: 15000 });
+      const params = forceRefresh ? { force: 'true', _: Date.now() } : {};
+      const data = await callCmmsApi('listMaintenanceTemplatesCached', params, { timeout: 15000 });
 
       if (data && data.success && Array.isArray(data.templates) && data.templates.length > 0) {
         localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(data.templates));
@@ -556,47 +557,78 @@ export const cmmsApi = {
    */
   async saveTemplate(template: MaintenanceTemplate): Promise<{ success: boolean; templateId: string; message?: string }> {
     try {
-      const imgName = template.referenceImageName || template.imageName || `ref_${Date.now()}.jpg`;
+      const imgName = template.referenceImageName || template.imageName || `ref_${Date.now()}.png`;
       const isPng = imgName.toLowerCase().endsWith('.png');
       const imgType = isPng ? 'image/png' : 'image/jpeg';
-      const imgBase64 = template.referenceImageUrl && template.referenceImageUrl.includes(',')
-        ? template.referenceImageUrl.split(',')[1]
-        : (template.referenceImageUrl || '');
 
-      const payloadObj = {
+      const payloadObj: any = {
         ...template,
+        templateId: template.templateId || '',
         referenceImageName: imgName,
         imageName: imgName,
       };
 
+      // 1. IF UPDATING AN EXISTING TEMPLATE:
+      // Never call createMaintenanceTemplateWithImage here (that creates duplicate rows!)
+      // updateMaintenanceTemplate directly updates the row in Google Sheets in-place.
       if (template.templateId) {
-        const data = await rawFormPost('updateMaintenanceTemplate', {
+        const updateData = await callCmmsApi('updateMaintenanceTemplate', {
           payload: JSON.stringify(payloadObj),
-          imageBase64: imgBase64,
-          imageName: imgName,
-          referenceImageName: imgName,
-          imageType: imgType,
         });
-        if (data && data.success) {
-          return { success: true, templateId: template.templateId };
-        }
-      } else {
-        const res = await rawFormPost('createMaintenanceTemplateWithImage', {
-          payload: JSON.stringify(payloadObj),
-          imageBase64: imgBase64,
-          imageName: imgName,
-          referenceImageName: imgName,
-          imageType: imgType,
-        });
-        if (res && res.success) {
-          return { success: true, templateId: res.templateId || `TMP-${Date.now()}` };
-        }
-      }
-    } catch (err) {
-      console.error('Error saving template to Google Sheet:', err);
-    }
 
-    return { success: true, templateId: template.templateId || `TMP-${Date.now()}` };
+        const targetId = template.templateId;
+
+        // Update local template cache immediately
+        try {
+          const cachedRaw = localStorage.getItem(CACHE_TEMPLATES_KEY);
+          const list: MaintenanceTemplate[] = cachedRaw ? JSON.parse(cachedRaw) : [];
+          const updatedList = list.map((t) => {
+            if (t.templateId === targetId) {
+              return {
+                ...t,
+                ...payloadObj,
+                templateId: targetId,
+              };
+            }
+            return t;
+          });
+          localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(updatedList));
+
+          // Also store in image cache if base64 was provided
+          if (template.referenceImageUrl && template.referenceImageUrl.startsWith('data:')) {
+            localStorage.setItem(`templateImg_${targetId}`, template.referenceImageUrl);
+            const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
+            map[targetId] = template.referenceImageUrl;
+            map[template.task] = template.referenceImageUrl;
+            localStorage.setItem('cmms_template_photos_map', JSON.stringify(map));
+          }
+        } catch {}
+
+        return {
+          success: true,
+          templateId: targetId,
+          message: updateData?.message || 'Bakım tanımı güncellendi.',
+        };
+      }
+
+      // 2. ONLY FOR BRAND NEW TEMPLATES (no templateId):
+      const createRes = await callCmmsApi('createMaintenanceTemplateWithImage', {
+        payload: JSON.stringify(payloadObj),
+        imageBase64: template.referenceImageUrl?.startsWith('data:') ? template.referenceImageUrl.split(',')[1] : '',
+        imageName: imgName,
+        imageType: imgType,
+      });
+
+      const newId = createRes?.templateId || `TMP-${Date.now()}`;
+      return {
+        success: true,
+        templateId: newId,
+        message: 'Yeni bakım tanımı E-Tabloya eklendi.',
+      };
+    } catch (err: any) {
+      console.error('Error saving template:', err);
+      return { success: false, templateId: template.templateId || '', message: err?.message };
+    }
   },
 
   /**

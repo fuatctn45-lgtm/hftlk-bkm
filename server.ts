@@ -399,9 +399,16 @@ app.all('/api/cmms/proxy', async (req, res) => {
     const action = String(req.query.action || req.body?.action || '');
     const isForce = req.query.force === 'true' || req.query.sync === 'true';
 
-    // Invalidate cache on mutations
-    if (isPost || action.includes('save') || action === 'redToUygun') {
-      invalidateSheetCache('listMaintenanceRecords');
+    // Invalidate all sheet cache on any mutation
+    if (
+      isPost ||
+      action.includes('save') ||
+      action.includes('create') ||
+      action.includes('update') ||
+      action.includes('delete') ||
+      action === 'redToUygun'
+    ) {
+      invalidateSheetCache();
     }
 
     // Check cache for read actions (machines: 10m, templates: 10m, records: 1m)
@@ -485,6 +492,54 @@ app.all('/api/cmms/proxy', async (req, res) => {
     console.error('Proxy Error:', err);
     res.status(502).json({ success: false, message: 'Google Apps Script bağlantı hatası: ' + err.message });
   }
+});
+
+/**
+ * Safe Proxy for Google Drive images (pipes real image bytes, avoids browser CORS & workspace sign-in restrictions)
+ */
+app.get('/api/drive-image/:id', async (req, res) => {
+  const fileId = req.params.id;
+  if (!fileId) {
+    return res.status(400).send('File ID required');
+  }
+
+  const urls = [
+    `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`,
+    `https://lh3.googleusercontent.com/d/${fileId}=w1600`,
+    `https://drive.google.com/uc?export=view&id=${fileId}`,
+  ];
+
+  for (const u of urls) {
+    try {
+      const response = await fetch(u, {
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        },
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.startsWith('image/')) {
+        const buffer = await response.arrayBuffer();
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.send(Buffer.from(buffer));
+      }
+    } catch {
+      // try next url
+    }
+  }
+
+  // 1x1 transparent PNG fallback if not found
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const transparentPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAKey=test',
+    'base64'
+  );
+  return res.send(transparentPng);
 });
 
 /**

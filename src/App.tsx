@@ -94,7 +94,7 @@ export default function App() {
     try {
       const [rawMachines, rawTemplates, rawRecords] = await Promise.all([
         cmmsApi.getMachines(),
-        cmmsApi.getTemplates(),
+        cmmsApi.getTemplates(showSyncSpinner),
         cmmsApi.getRecords(),
       ]);
 

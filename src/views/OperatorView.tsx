@@ -272,13 +272,26 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     );
   };
 
-  // Helper: resolve Google Drive URL to direct CDN format
-  const resolveDriveImageUrl = (url?: string | null): string => {
+  // Helper: resolve Google Drive URL to local cache or proxy
+  const resolveDriveImageUrl = (url?: string | null, templateId?: string, taskTitle?: string): string => {
     if (!url) return '';
     if (url.startsWith('data:')) return url;
+
+    // 1. Check local base64 cache (instant zero-latency display for edited/uploaded images)
+    try {
+      if (templateId) {
+        const cached = localStorage.getItem(`templateImg_${templateId}`);
+        if (cached && cached.startsWith('data:')) return cached;
+      }
+      const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
+      if (templateId && map[templateId] && map[templateId].startsWith('data:')) return map[templateId];
+      if (taskTitle && map[taskTitle] && map[taskTitle].startsWith('data:')) return map[taskTitle];
+      if (map[url] && map[url].startsWith('data:')) return map[url];
+    } catch {}
+
     const fId = extractDriveFileId(url);
     if (fId) {
-      return `https://lh3.googleusercontent.com/d/${fId}=w1000`;
+      return `/api/drive-image/${fId}`;
     }
     return url;
   };
@@ -1320,17 +1333,17 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             className="relative w-full max-h-56 sm:max-h-64 aspect-16/9 bg-black rounded-xl overflow-hidden border border-yellow-500/30 cursor-zoom-in group shadow-inner"
           >
             <img
-              src={resolveDriveImageUrl(selectedTask.referenceImageUrl)}
+              src={resolveDriveImageUrl(selectedTask.referenceImageUrl, selectedTask.templateId, selectedTask.task)}
               alt="Referans Resim"
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const fId = extractDriveFileId(selectedTask.referenceImageUrl);
                 if (!fId) return;
                 const current = e.currentTarget.src;
-                if (current.includes('lh3.googleusercontent')) {
+                if (current.includes('/api/drive-image/')) {
                   e.currentTarget.src = `https://drive.google.com/thumbnail?id=${fId}&sz=w1000`;
                 } else if (current.includes('thumbnail')) {
-                  e.currentTarget.src = `https://drive.google.com/uc?export=view&id=${fId}`;
+                  e.currentTarget.src = `https://lh3.googleusercontent.com/d/${fId}=w1000`;
                 }
               }}
               className="w-full h-full object-contain"
@@ -1662,17 +1675,17 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <X className="w-7 h-7" />
             </button>
             <img
-              src={resolveDriveImageUrl(selectedTask.referenceImageUrl)}
+              src={resolveDriveImageUrl(selectedTask.referenceImageUrl, selectedTask.templateId, selectedTask.task)}
               alt="Referans Resim"
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const fId = extractDriveFileId(selectedTask.referenceImageUrl);
                 if (!fId) return;
                 const current = e.currentTarget.src;
-                if (current.includes('lh3.googleusercontent')) {
+                if (current.includes('/api/drive-image/')) {
                   e.currentTarget.src = `https://drive.google.com/thumbnail?id=${fId}&sz=w1600`;
                 } else if (current.includes('thumbnail')) {
-                  e.currentTarget.src = `https://drive.google.com/uc?export=view&id=${fId}`;
+                  e.currentTarget.src = `https://lh3.googleusercontent.com/d/${fId}=w1600`;
                 }
               }}
               className="max-w-full max-h-[80vh] object-contain rounded-2xl bg-black border border-yellow-500/40 shadow-2xl"
