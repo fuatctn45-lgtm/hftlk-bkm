@@ -24,21 +24,35 @@
   <body class="bg-slate-100 text-slate-800 antialiased selection:bg-sky-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script type="module">
-      // GitHub Pages Otomatik Kurtarma (Sadece github.io statik barındırmada devreye girer)
-      if (window.location.hostname.includes('github.io')) {
-        setTimeout(() => {
-          const root = document.getElementById('root');
-          if (root && (!root.children || root.children.length === 0)) {
-            console.warn('[AKG CMMS] Statik GitHub Pages ortamı algılandı. Üretim paketi yükleniyor...');
-            const s = document.createElement('script');
-            s.type = 'module';
-            s.crossOrigin = 'anonymous';
-            s.src = './assets/index.js';
-            document.body.appendChild(s);
+    <script>
+      (function() {
+        var isGitHub = window.location.hostname.includes('github.io') || window.location.protocol === 'file:';
+        function loadStatic() {
+          if (!document.getElementById('cmms-prod-bundle')) {
+            var css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = './assets/index.css';
+            document.head.appendChild(css);
+
+            var js = document.createElement('script');
+            js.id = 'cmms-prod-bundle';
+            js.type = 'module';
+            js.crossOrigin = 'anonymous';
+            js.src = './assets/index.js';
+            document.body.appendChild(js);
           }
-        }, 800);
-      }
+        }
+
+        if (isGitHub) {
+          // On GitHub Pages, TSX source cannot execute; trigger production assets
+          setTimeout(function() {
+            var root = document.getElementById('root');
+            if (root && (!root.children || root.children.length === 0)) {
+              loadStatic();
+            }
+          }, 150);
+        }
+      })();
     </script>
   </body>
 </html>
