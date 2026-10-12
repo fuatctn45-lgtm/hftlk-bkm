@@ -1901,9 +1901,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
-                    <span>Google Apps Script Kodu (Code.gs V5.5.2)</span>
+                    <span>Google Apps Script Kodu (Code.gs V5.5.4)</span>
                     <span className="text-[10px] font-mono bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded border border-yellow-400/40">
-                      Görsel Sütunları Düzeltildi
+                      Görsel ve Düzenleme Sütunları Güncel
                     </span>
                   </h4>
                   <p className="text-[11px] text-slate-400 font-medium">

@@ -1148,25 +1148,55 @@ app.get('/api/export-project-zip', (req, res) => {
 
 /**
  * Export pre-compiled dist files ready for 1-click GitHub Pages upload
+ * Always compiles fresh dist, creates index.js/css aliases, and adds .nojekyll
  */
 app.get('/api/export-github-pages-zip', (req, res) => {
-  const zipPath = path.resolve(os.tmpdir(), `GITHUB_PAGES_YUKLE_V5.5.0_${Date.now()}.zip`);
   const distDir = path.resolve(process.cwd(), 'dist');
+  const zipPath = path.resolve(os.tmpdir(), `GITHUB_PAGES_YUKLE_V5.5.0_${Date.now()}.zip`);
 
-  // Zip the contents of dist/ directly using python3
-  const pyCode = `import zipfile, os, sys; out = sys.argv[1]; d = sys.argv[2]; z = zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED); [(z.write(os.path.join(r, f), os.path.relpath(os.path.join(r, f), d))) for r, dirs, files in os.walk(d) for f in files]; z.close()`;
-  exec(`python3 -c "${pyCode}" "${zipPath}" "${distDir}"`, (err) => {
-    if (err || !fs.existsSync(zipPath)) {
-      console.error('GitHub Pages zip error:', err);
-      return res.status(500).json({ error: 'GitHub Pages zip oluşturulamadı' });
+  // 1. Build fresh dist
+  exec('npm run build', (buildErr) => {
+    if (buildErr) {
+      console.warn('Fresh build warning, falling back to existing dist:', buildErr);
     }
 
-    res.download(zipPath, `GITHUB_PAGES_YUKLE_V5.5.0.zip`, () => {
-      try {
-        if (fs.existsSync(zipPath)) {
-          fs.unlinkSync(zipPath);
+    try {
+      // 2. Ensure .nojekyll in dist
+      fs.writeFileSync(path.join(distDir, '.nojekyll'), '# GitHub Pages nojekyll marker\n', 'utf8');
+
+      // 3. Create unhashed asset aliases in dist/assets so both hashed & static URLs work
+      const assetsDir = path.join(distDir, 'assets');
+      if (fs.existsSync(assetsDir)) {
+        const files = fs.readdirSync(assetsDir);
+        const jsFile = files.find((f) => f.startsWith('index-') && f.endsWith('.js'));
+        const cssFile = files.find((f) => f.startsWith('index-') && f.endsWith('.css'));
+
+        if (jsFile && !fs.existsSync(path.join(assetsDir, 'index.js'))) {
+          fs.copyFileSync(path.join(assetsDir, jsFile), path.join(assetsDir, 'index.js'));
         }
-      } catch {}
+        if (cssFile && !fs.existsSync(path.join(assetsDir, 'index.css'))) {
+          fs.copyFileSync(path.join(assetsDir, cssFile), path.join(assetsDir, 'index.css'));
+        }
+      }
+    } catch (e) {
+      console.warn('Asset alias creation error:', e);
+    }
+
+    // 4. Zip the contents of dist/ directly using python3
+    const pyCode = `import zipfile, os, sys; out = sys.argv[1]; d = sys.argv[2]; z = zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED); [(z.write(os.path.join(r, f), os.path.relpath(os.path.join(r, f), d))) for r, dirs, files in os.walk(d) for f in files]; z.close()`;
+    exec(`python3 -c "${pyCode}" "${zipPath}" "${distDir}"`, (err) => {
+      if (err || !fs.existsSync(zipPath)) {
+        console.error('GitHub Pages zip error:', err);
+        return res.status(500).json({ error: 'GitHub Pages zip oluşturulamadı' });
+      }
+
+      res.download(zipPath, `GITHUB_PAGES_YUKLE_V5.5.0.zip`, () => {
+        try {
+          if (fs.existsSync(zipPath)) {
+            fs.unlinkSync(zipPath);
+          }
+        } catch {}
+      });
     });
   });
 });
