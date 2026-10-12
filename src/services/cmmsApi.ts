@@ -222,18 +222,17 @@ function rawFormPost(action: string, fields: Record<string, string>, timeoutMs =
  * or a server-backed environment (AI Studio, localhost Express proxy)
  */
 async function callCmmsApi(action: string, params: Record<string, any> = {}, options: { timeout?: number } = {}): Promise<any> {
-  const isStaticHost = typeof window !== 'undefined' && (
+  const isDirectStaticOnly = typeof window !== 'undefined' && (
     window.location.hostname.includes('github.io') ||
-    window.location.protocol === 'file:' ||
-    window.location.hostname === 'localhost' && window.location.port !== '3000'
+    window.location.protocol === 'file:'
   );
 
-  // If running on GitHub Pages, go DIRECTLY to Google Apps Script via JSONP
-  if (isStaticHost) {
-    return rawJsonp(action, params, options.timeout || 12000);
+  // If running strictly on GitHub Pages or file:// without a server backend
+  if (isDirectStaticOnly) {
+    return rawJsonp(action, params, options.timeout || 20000);
   }
 
-  // Otherwise, try local Express proxy first, with fallback to JSONP
+  // Primary: Always use Express proxy (handles CORS, direct Google Sheets reading, and Drive proxy)
   try {
     const query = new URLSearchParams();
     query.set('action', action);
@@ -244,18 +243,18 @@ async function callCmmsApi(action: string, params: Record<string, any> = {}, opt
     }
 
     const res = await fetch(`${LOCAL_PROXY_URL}?${query.toString()}`, {
-      signal: AbortSignal.timeout(options.timeout || 8000),
+      signal: AbortSignal.timeout(options.timeout || 20000),
     });
 
     if (res.ok) {
       return await res.json();
     }
   } catch (err) {
-    console.warn(`Local proxy unavailable for ${action}, falling back to direct JSONP:`, err);
+    console.warn(`Local proxy unavailable for ${action}, falling back to direct Apps Script:`, err);
   }
 
-  // Fallback to JSONP
-  return rawJsonp(action, params, options.timeout || 12000);
+  // Fallback to direct Apps Script JSONP
+  return rawJsonp(action, params, options.timeout || 20000);
 }
 
 export const cmmsApi = {
@@ -361,7 +360,22 @@ export const cmmsApi = {
           }
         });
 
-        const cleanTemplates = Array.from(dedupedMap.values());
+        let deletedImagesMap: Record<string, boolean> = {};
+        try {
+          deletedImagesMap = JSON.parse(localStorage.getItem('cmms_deleted_images') || '{}');
+        } catch {}
+
+        const cleanTemplates = Array.from(dedupedMap.values()).map((t) => {
+          if (deletedImagesMap[t.templateId]) {
+            return {
+              ...t,
+              referenceImageUrl: '',
+              referenceImageName: '',
+              referenceImageDriveId: '',
+            };
+          }
+          return t;
+        });
         localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(cleanTemplates));
         return cleanTemplates;
       }
@@ -573,9 +587,12 @@ export const cmmsApi = {
   /**
    * Save template (create or update) to Google Spreadsheet
    */
-  async saveTemplate(template: MaintenanceTemplate): Promise<{ success: boolean; templateId: string; message?: string }> {
+  async saveTemplate(
+    template: MaintenanceTemplate,
+    options?: { isNewImageSelected?: boolean; existingImageUrl?: string; deleteImage?: boolean }
+  ): Promise<{ success: boolean; templateId: string; referenceImageUrl?: string; message?: string }> {
     try {
-      const imgName = template.referenceImageName || template.imageName || `ref_${Date.now()}.png`;
+      const imgName = template.referenceImageName || template.imageName || `ref_${template.templateId || Date.now()}.png`;
       const isPng = imgName.toLowerCase().endsWith('.png');
       const imgType = isPng ? 'image/png' : 'image/jpeg';
 
@@ -585,12 +602,115 @@ export const cmmsApi = {
         (window.location.hostname === 'localhost' && window.location.port !== '3000')
       );
 
-      let resolvedImageUrl = template.referenceImageUrl;
-
       // 1. IF UPDATING AN EXISTING TEMPLATE:
       if (template.templateId) {
-        // If in Node environment (AI Studio dev), try local storage endpoint
-        if (!isStaticHost && template.referenceImageUrl && template.referenceImageUrl.startsWith('data:')) {
+        const targetId = template.templateId;
+        const isNewImage = Boolean(
+          options?.isNewImageSelected ||
+          (template.referenceImageUrl && template.referenceImageUrl.startsWith('data:'))
+        );
+
+        const isDeleteImage = Boolean(
+          options?.deleteImage ||
+          template.deleteImage ||
+          template.referenceImageUrl === '' ||
+          template.referenceImageUrl === null ||
+          (isNewImage && !template.referenceImageUrl)
+        );
+
+        let finalSavedUrl = isDeleteImage
+          ? ''
+          : (isNewImage
+              ? (template.referenceImageUrl || '')
+              : (options?.existingImageUrl || template.referenceImageUrl || ''));
+
+        // 1A. In Node/Express environment (AI Studio dev/preview/Cloud Run), use server update route:
+        if (!isStaticHost) {
+          try {
+            const updateRes = await fetch('/api/cmms/update-template', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                template: {
+                  ...template,
+                  referenceImageUrl: isDeleteImage ? '' : template.referenceImageUrl,
+                  deleteImage: isDeleteImage,
+                },
+                imageBase64: isDeleteImage ? undefined : (isNewImage ? template.referenceImageUrl : undefined),
+                imageName: isDeleteImage ? '' : imgName,
+                isNewImageSelected: isNewImage,
+                existingImageUrl: isDeleteImage ? '' : options?.existingImageUrl,
+                deleteImage: isDeleteImage,
+              }),
+            });
+
+            if (updateRes.ok) {
+              const updateData = await updateRes.json();
+              if (updateData.success) {
+                finalSavedUrl = isDeleteImage ? '' : (updateData.referenceImageUrl || finalSavedUrl);
+
+                // Update local storage caches immediately
+                try {
+                  const cachedRaw = localStorage.getItem(CACHE_TEMPLATES_KEY);
+                  const list: MaintenanceTemplate[] = cachedRaw ? JSON.parse(cachedRaw) : [];
+                  const updatedList = list.map((t) => {
+                    if (t.templateId === targetId) {
+                      return {
+                        ...t,
+                        ...template,
+                        templateId: targetId,
+                        referenceImageUrl: isDeleteImage ? '' : (finalSavedUrl || t.referenceImageUrl),
+                        referenceImageName: isDeleteImage ? '' : imgName,
+                        referenceImageDriveId: isDeleteImage ? '' : t.referenceImageDriveId,
+                      };
+                    }
+                    return t;
+                  });
+                  localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(updatedList));
+
+                  if (isDeleteImage) {
+                    try {
+                      const delMap = JSON.parse(localStorage.getItem('cmms_deleted_images') || '{}');
+                      delMap[targetId] = true;
+                      localStorage.setItem('cmms_deleted_images', JSON.stringify(delMap));
+                    } catch {}
+
+                    localStorage.removeItem(`templateImg_${targetId}`);
+                    const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
+                    delete map[targetId];
+                    if (template.task) delete map[template.task];
+                    localStorage.setItem('cmms_template_photos_map', JSON.stringify(map));
+                  } else if (finalSavedUrl) {
+                    try {
+                      const delMap = JSON.parse(localStorage.getItem('cmms_deleted_images') || '{}');
+                      delete delMap[targetId];
+                      localStorage.setItem('cmms_deleted_images', JSON.stringify(delMap));
+                    } catch {}
+
+                    localStorage.setItem(`templateImg_${targetId}`, finalSavedUrl);
+                    const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
+                    map[targetId] = finalSavedUrl;
+                    if (template.task) map[template.task] = finalSavedUrl;
+                    localStorage.setItem('cmms_template_photos_map', JSON.stringify(map));
+                  }
+                } catch {}
+
+                return {
+                  success: true,
+                  templateId: targetId,
+                  referenceImageUrl: finalSavedUrl,
+                  message: updateData.message || 'Bakım tanımı güncellendi.',
+                };
+              }
+            }
+          } catch (serverErr) {
+            console.warn('Server /api/cmms/update-template error, falling back to direct Apps Script:', serverErr);
+          }
+        }
+
+        // 1B. Fallback or Static Host (GitHub Pages / file://):
+        // If a new image was chosen, upload image to local server if available
+        if (isNewImage && template.referenceImageUrl?.startsWith('data:')) {
           try {
             const uploadRes = await fetch('/api/cmms/upload-template-image', {
               method: 'POST',
@@ -598,39 +718,60 @@ export const cmmsApi = {
               body: JSON.stringify({
                 imageBase64: template.referenceImageUrl,
                 imageName: imgName,
-                templateId: template.templateId,
+                templateId: targetId,
               }),
             });
             if (uploadRes.ok) {
               const uploadData = await uploadRes.json();
               if (uploadData.success && uploadData.imageUrl) {
-                resolvedImageUrl = uploadData.imageUrl;
+                finalSavedUrl = uploadData.imageUrl;
               }
             }
-          } catch (upErr) {
-            console.warn('Local image upload error:', upErr);
+          } catch {}
+        }
+
+        // Also attempt direct POST to Apps Script with base64 for Drive upload
+        const rawBase64 = isNewImage && template.referenceImageUrl?.startsWith('data:')
+          ? template.referenceImageUrl.split(',')[1]
+          : '';
+
+        if (rawBase64) {
+          try {
+            const formRes = await rawFormPost('updateMaintenanceTemplate', {
+              payload: JSON.stringify({
+                ...template,
+                referenceImageUrl: finalSavedUrl?.startsWith('data:') ? '' : (finalSavedUrl || ''),
+                referenceImageName: imgName,
+                imageName: imgName,
+              }),
+              imageBase64: rawBase64,
+              imageName: imgName,
+              imageType: imgType,
+            }, 15000);
+            if (formRes?.success && formRes.referenceImageUrl) {
+              finalSavedUrl = formRes.referenceImageUrl;
+            }
+          } catch (formErr) {
+            console.warn('Apps Script Drive updateFormPost error:', formErr);
           }
         }
 
-        // If still base64 (on GitHub Pages), do not put 2MB base64 into GET query string
-        const safePayloadImageUrl = (resolvedImageUrl && !resolvedImageUrl.startsWith('data:'))
-          ? resolvedImageUrl
-          : (template.referenceImageUrl?.startsWith('data:') ? '' : (template.referenceImageUrl || ''));
+        // Standard GET call to updateMaintenanceTemplate (to guarantee spreadsheet row update)
+        const safePayloadImageUrl = (finalSavedUrl && !finalSavedUrl.startsWith('data:'))
+          ? finalSavedUrl
+          : (options?.existingImageUrl && !options.existingImageUrl.startsWith('data:') ? options.existingImageUrl : '');
 
         const payloadObj: any = {
           ...template,
-          templateId: template.templateId,
-          referenceImageUrl: safePayloadImageUrl,
+          templateId: targetId,
+          referenceImageUrl: safePayloadImageUrl || undefined,
           referenceImageName: imgName,
           imageName: imgName,
         };
 
-        // Call updateMaintenanceTemplate ONLY (NEVER call createMaintenanceTemplateWithImage on edit!)
         const updateData = await callCmmsApi('updateMaintenanceTemplate', {
           payload: JSON.stringify(payloadObj),
         });
-
-        const targetId = template.templateId;
 
         // Update local template cache immediately
         try {
@@ -642,19 +783,19 @@ export const cmmsApi = {
                 ...t,
                 ...payloadObj,
                 templateId: targetId,
-                referenceImageUrl: resolvedImageUrl || t.referenceImageUrl,
+                referenceImageUrl: finalSavedUrl || t.referenceImageUrl,
+                referenceImageName: imgName,
               };
             }
             return t;
           });
           localStorage.setItem(CACHE_TEMPLATES_KEY, JSON.stringify(updatedList));
 
-          // Also store in image cache
-          if (template.referenceImageUrl) {
-            localStorage.setItem(`templateImg_${targetId}`, template.referenceImageUrl);
+          if (finalSavedUrl) {
+            localStorage.setItem(`templateImg_${targetId}`, finalSavedUrl);
             const map = JSON.parse(localStorage.getItem('cmms_template_photos_map') || '{}');
-            map[targetId] = template.referenceImageUrl;
-            map[template.task] = template.referenceImageUrl;
+            map[targetId] = finalSavedUrl;
+            if (template.task) map[template.task] = finalSavedUrl;
             localStorage.setItem('cmms_template_photos_map', JSON.stringify(map));
           }
         } catch {}
@@ -662,7 +803,8 @@ export const cmmsApi = {
         return {
           success: true,
           templateId: targetId,
-          message: updateData?.message || 'Bakım tanımı güncellendi.',
+          referenceImageUrl: finalSavedUrl,
+          message: updateData?.message || 'Bakım tanımı ve görseli başarıyla güncellendi.',
         };
       }
 
@@ -685,6 +827,7 @@ export const cmmsApi = {
       return {
         success: true,
         templateId: newId,
+        referenceImageUrl: createRes?.referenceImageUrl,
         message: 'Yeni bakım tanımı E-Tabloya eklendi.',
       };
     } catch (err: any) {

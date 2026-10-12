@@ -26,7 +26,10 @@ export interface MaintenanceTemplate {
   active: boolean;
   referenceImageUrl?: string;
   referenceImageName?: string;
+  referenceImageDriveId?: string;
   imageName?: string;
+  costCenter?: string;
+  deleteImage?: boolean;
 }
 
 export interface MaintenanceRecord {
