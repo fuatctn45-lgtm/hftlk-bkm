@@ -7,12 +7,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  ArrowRight,
   TrendingUp,
   Search,
   Check,
   X,
-  QrCode,
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -235,14 +233,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </span>
               );
             })}
-          </div>
-        </div>
-
-        {/* Sağ Taraf: QR Giriş İkonu ve Ok */}
-        <div className="shrink-0 flex items-center gap-2 pl-2">
-          <div className="p-2 sm:px-3 sm:py-1.5 bg-yellow-400/15 group-hover:bg-yellow-400 group-hover:text-black text-yellow-400 text-xs font-black rounded-xl border border-yellow-400/30 flex items-center gap-1.5 transition-all shadow-xs">
-            <QrCode className="w-4 h-4 shrink-0" />
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0" />
           </div>
         </div>
       </div>
