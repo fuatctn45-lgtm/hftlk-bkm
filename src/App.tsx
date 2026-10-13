@@ -5,6 +5,7 @@ import {
   clearStoredUser,
   cmmsApi,
   getWeekKey,
+  normalizeWeekKey,
   getCachedMachines,
   getCachedTemplates,
   getCachedRecords,
@@ -147,7 +148,7 @@ export default function App() {
   // Calculate current week's RED count for badge
   const thisWeek = getWeekKey();
   const redCount = records.filter(
-    (r) => r.weekKey === thisWeek && r.result === 'RED'
+    (r) => normalizeWeekKey(r.weekKey, r.createdAt) === thisWeek && r.result === 'RED'
   ).length;
 
   if (loading) {
@@ -166,6 +167,15 @@ export default function App() {
     );
   }
 
+  const [operatorInitialMachine, setOperatorInitialMachine] = useState<Machine | null>(null);
+  const [operatorInitialTemplateId, setOperatorInitialTemplateId] = useState<string | null>(null);
+
+  const handleSelectMachineFromHome = (m: Machine, templateId?: string) => {
+    setOperatorInitialMachine(m);
+    setOperatorInitialTemplateId(templateId || null);
+    setCurrentScreen('operator');
+  };
+
   // Not logged in: Show Login Screen
   if (!user) {
     return (
@@ -180,7 +190,13 @@ export default function App() {
     <div className="min-h-screen bg-[#131d2e] text-slate-100 flex flex-col font-sans">
       <Header
         currentScreen={currentScreen}
-        onNavigate={setCurrentScreen}
+        onNavigate={(screen) => {
+          if (screen === 'operator') {
+            setOperatorInitialMachine(null);
+            setOperatorInitialTemplateId(null);
+          }
+          setCurrentScreen(screen);
+        }}
         user={user}
         redCount={redCount}
         onRequestLogout={handleRequestLogout}
@@ -199,6 +215,7 @@ export default function App() {
             templates={templates}
             records={records}
             onNavigate={setCurrentScreen}
+            onSelectMachine={handleSelectMachineFromHome}
           />
         )}
 
@@ -208,8 +225,14 @@ export default function App() {
             machines={machines}
             templates={templates}
             records={records}
+            initialMachine={operatorInitialMachine}
+            initialTemplateId={operatorInitialTemplateId}
             onRecordSaved={() => loadData(true)}
-            onNavigateHome={() => setCurrentScreen('home')}
+            onNavigateHome={() => {
+              setOperatorInitialMachine(null);
+              setOperatorInitialTemplateId(null);
+              setCurrentScreen('home');
+            }}
           />
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserSession, Machine, MaintenanceTemplate, MaintenanceRecord } from '../types/cmms';
-import { getWeekKey } from '../services/cmmsApi';
+import { getWeekKey, normalizeWeekKey } from '../services/cmmsApi';
 import { uploadQueueService, QueuedRecord } from '../services/uploadQueue';
 import {
   Wrench,
@@ -12,7 +12,9 @@ import {
   Search,
   Check,
   X,
+  Eye,
 } from 'lucide-react';
+import { PerformedMaintenanceModal } from '../components/PerformedMaintenanceModal';
 
 interface HomeViewProps {
   user: UserSession;
@@ -20,6 +22,7 @@ interface HomeViewProps {
   templates: MaintenanceTemplate[];
   records: MaintenanceRecord[];
   onNavigate: (screen: 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch') => void;
+  onSelectMachine?: (machine: Machine, templateId?: string) => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -28,12 +31,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
   templates,
   records,
   onNavigate,
+  onSelectMachine,
 }) => {
   const currentWeek = getWeekKey();
   const operatorName = user.operator || user.name || user.fullName || 'Operatör';
   const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'completed' | 'hasRed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadQueue, setUploadQueue] = useState<QueuedRecord[]>(() => uploadQueueService.getQueue());
+  const [performedModalMachine, setPerformedModalMachine] = useState<Machine | null>(null);
 
   useEffect(() => {
     return uploadQueueService.subscribe(setUploadQueue);
@@ -41,7 +46,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   // Calculate current week statistics (incorporates local background queue immediately for 0ms lag)
   const currentWeekRecords = useMemo(() => {
-    const fromApi = records.filter((r) => r.weekKey === currentWeek);
+    const fromApi = records.filter((r) => normalizeWeekKey(r.weekKey, r.createdAt) === currentWeek);
     const fromQueue = uploadQueue.map((q) => ({
       recordId: q.id,
       machineId: q.machineId,
@@ -61,10 +66,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
     } as MaintenanceRecord));
 
     const existingKeys = new Set(
-      fromApi.map((r) => `${r.machineId || r.machineName}_${r.templateId}`)
+      fromApi.map((r) => `${(r.machineId || r.machineName || '').trim().toLowerCase()}_${(r.templateId || '').trim().toLowerCase()}`)
     );
     const nonDuplicatedQueue = fromQueue.filter(
-      (q) => !existingKeys.has(`${q.machineId || q.machineName}_${q.templateId}`)
+      (q) => !existingKeys.has(`${(q.machineId || q.machineName || '').trim().toLowerCase()}_${(q.templateId || '').trim().toLowerCase()}`)
     );
 
     return [...fromApi, ...nonDuplicatedQueue];
@@ -88,11 +93,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
   };
 
   const getTaskStatus = (machineId: string, templateId: string): 'bekleyen' | 'tamamlanan' | 'red' => {
-    const rec = currentWeekRecords.find(
-      (r) => (r.machineId === machineId || r.machineName === machineId) && r.templateId === templateId
-    );
-    if (!rec) return 'bekleyen';
-    return rec.result === 'RED' ? 'red' : 'tamamlanan';
+    const cleanMid = (machineId || '').trim().toLowerCase();
+    const cleanTid = (templateId || '').trim().toLowerCase();
+
+    // Sadece bu haftanın (currentWeek) kayıtlarını dikkate al
+    const matchingCurrent = currentWeekRecords.filter((r) => {
+      const matchTmpl = (r.templateId || '').trim().toLowerCase() === cleanTid;
+      if (!matchTmpl) return false;
+      const rMid = (r.machineId || '').trim().toLowerCase();
+      const rMName = (r.machineName || '').trim().toLowerCase();
+      return rMid === cleanMid || rMName === cleanMid || (cleanMid && (rMid.includes(cleanMid) || cleanMid.includes(rMid)));
+    });
+
+    if (matchingCurrent.length > 0) {
+      const latestRec = matchingCurrent[matchingCurrent.length - 1];
+      return String(latestRec.result || '').toUpperCase().includes('RED') ? 'red' : 'tamamlanan';
+    }
+
+    return 'bekleyen';
   };
 
   const machinesWithTasks = useMemo(() => {
@@ -136,18 +154,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const renderHomeMachineRow = (m: Machine) => {
     const mTasks = getMachineTasks(m);
-    const completedCount = mTasks.filter(
+    const completedTasks = mTasks.filter(
       (t) => getTaskStatus(m.id, t.templateId) !== 'bekleyen'
-    ).length;
-    const hasRed = mTasks.some((t) => getTaskStatus(m.id, t.templateId) === 'red');
+    );
+    const completedCount = completedTasks.length;
+    const okCount = mTasks.filter((t) => getTaskStatus(m.id, t.templateId) === 'tamamlanan').length;
+    const redCount = mTasks.filter((t) => getTaskStatus(m.id, t.templateId) === 'red').length;
+    const hasRed = redCount > 0;
     const isAllDone = mTasks.length > 0 && completedCount >= mTasks.length;
 
     return (
       <div
         key={m.id}
         onClick={() => {
-          if (hasRed) onNavigate('redList');
-          else onNavigate('operator');
+          if (isAllDone) {
+            setPerformedModalMachine(m);
+          } else if (onSelectMachine) {
+            onSelectMachine(m);
+          } else {
+            onNavigate('operator');
+          }
         }}
         className={`group w-full p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer shadow-xs flex items-center justify-between gap-3 active:scale-[0.99] hover:shadow-md ${
           hasRed
@@ -158,11 +184,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
         }`}
       >
         <div className="min-w-0 flex-1 space-y-2.5">
-          {/* Makine İsmi (Masraf merkezi / kod etiketi kaldırıldı) */}
-          <div className="flex items-center gap-2">
+          {/* Makine İsmi ve Durum Rozetleri */}
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base sm:text-lg font-black text-yellow-400 group-hover:text-yellow-300 transition-colors">
               {m.machineName}
             </h3>
+            {isAllDone && (
+              <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>Tamamlandı</span>
+              </span>
+            )}
+            {completedCount > 0 && (
+              <span className="text-[10px] font-black bg-[#141d2d] px-2 py-0.5 rounded-md border border-slate-700 flex items-center gap-1.5">
+                {okCount > 0 && <span className="text-emerald-400">{okCount} OK</span>}
+                {okCount > 0 && redCount > 0 && <span className="text-slate-500">·</span>}
+                {redCount > 0 && <span className="text-rose-400 animate-pulse">{redCount} RED</span>}
+              </span>
+            )}
           </div>
 
           {/* Numaralı Adım Kutuları */}
@@ -171,27 +210,62 @@ export const HomeView: React.FC<HomeViewProps> = ({
               const st = getTaskStatus(m.id, t.templateId);
               const bg =
                 st === 'red'
-                  ? 'bg-rose-600 text-white shadow-xs animate-pulse ring-1 ring-rose-400'
+                  ? 'bg-rose-600 text-white shadow-xs animate-pulse ring-1 ring-rose-400 border border-rose-300'
                   : st === 'tamamlanan'
-                  ? 'bg-emerald-500 text-black font-black shadow-xs'
+                  ? 'bg-emerald-500 text-black font-black shadow-xs border border-emerald-300'
                   : 'bg-[#141d2d] text-yellow-400 border border-yellow-500/50 hover:border-yellow-400';
 
               return (
                 <span
                   key={t.templateId}
-                  title={`${idx + 1}. ${t.task} (${st.toUpperCase()})`}
-                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg font-mono font-black text-xs sm:text-sm flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${bg}`}
+                  title={`${idx + 1}. ${t.task} - ${st === 'tamamlanan' ? 'OK (UYGUN)' : st === 'red' ? 'RED (ARIZA)' : 'BEKLEYEN'} (${st.toUpperCase()})`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (st === 'tamamlanan' || st === 'red') {
+                      setPerformedModalMachine(m);
+                    } else if (onSelectMachine) {
+                      onSelectMachine(m, t.templateId);
+                    } else {
+                      onNavigate('operator');
+                    }
+                  }}
+                  className={`min-w-[32px] px-1.5 h-7 sm:h-8 rounded-lg font-mono font-black text-xs sm:text-sm flex items-center justify-center shrink-0 transition-transform hover:scale-110 cursor-pointer ${bg}`}
                 >
-                  {idx + 1}
+                  {st === 'tamamlanan' ? (
+                    <span className="text-[11px] sm:text-xs font-black tracking-tight text-black">OK</span>
+                  ) : st === 'red' ? (
+                    <span className="text-[10px] sm:text-[11px] font-black tracking-tight text-white animate-pulse">RED</span>
+                  ) : (
+                    <span>{idx + 1}</span>
+                  )}
                 </span>
               );
             })}
           </div>
         </div>
 
-        {/* Sağ Taraf: Buton kaldırıldı, tıklandığını gösteren zarif geçiş oku */}
-        <div className="shrink-0 flex items-center text-slate-500 group-hover:text-yellow-400 group-hover:translate-x-1 transition-all pl-2">
-          <ArrowRight className="w-5 h-5" />
+        {/* Sağ Taraf: Yapılanları Gör Butonu ve Geçiş Oku */}
+        <div className="shrink-0 flex items-center gap-2 text-slate-500 pl-2">
+          {completedCount > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPerformedModalMachine(m);
+              }}
+              title="Bu makinede yapılan kontrolleri incele"
+              className="px-2.5 py-1.5 bg-yellow-400/15 hover:bg-yellow-400 hover:text-black text-yellow-400 text-xs font-black rounded-lg border border-yellow-400/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Yapılanları Gör</span>
+              <span className="text-[10px] font-mono font-black bg-yellow-400/20 group-hover:bg-black/20 px-1 rounded">
+                {completedCount}/{mTasks.length}
+              </span>
+            </button>
+          )}
+          <div className="group-hover:text-yellow-400 group-hover:translate-x-1 transition-all">
+            <ArrowRight className="w-5 h-5" />
+          </div>
         </div>
       </div>
     );
@@ -449,6 +523,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Yapılan Bakımlar Görünümü Modalı */}
+      <PerformedMaintenanceModal
+        isOpen={!!performedModalMachine}
+        onClose={() => setPerformedModalMachine(null)}
+        machine={performedModalMachine}
+        records={records}
+        templates={templates}
+        onEditTask={() => {
+          setPerformedModalMachine(null);
+          onNavigate('operator');
+        }}
+      />
     </div>
   );
 };

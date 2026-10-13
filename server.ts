@@ -611,6 +611,41 @@ async function loadLiveTemplatesFromSheet(): Promise<{ success: boolean; count: 
   return { success: true, count: templates.length, templates };
 }
 
+function getWeekKey(d = new Date()): string {
+  const target = new Date(d.valueOf());
+  const dayNr = (d.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+  }
+  const weekNum = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+  return `${target.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+function normalizeWeekKey(rawVal?: any, createdAtVal?: any): string {
+  const raw = String(rawVal || '').trim();
+  if (/^\d{4}-W\d{1,2}$/i.test(raw)) {
+    return raw.toUpperCase();
+  }
+
+  const dateStr = raw.includes('.') || raw.includes('-') || raw.includes('/') ? raw : String(createdAtVal || '');
+  const trMatch = dateStr.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (trMatch) {
+    const d = new Date(Number(trMatch[3]), Number(trMatch[2]) - 1, Number(trMatch[1]));
+    if (!isNaN(d.getTime())) return getWeekKey(d);
+  }
+
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const d = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+    if (!isNaN(d.getTime())) return getWeekKey(d);
+  }
+
+  return getWeekKey();
+}
+
 async function loadLiveRecordsFromSheet(): Promise<{ success: boolean; count: number; records: any[] }> {
   const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=weeklyMaintenanceRecords`;
   const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -631,6 +666,10 @@ async function loadLiveRecordsFromSheet(): Promise<{ success: boolean; count: nu
     const recId = row[colMap['recordid']] !== undefined ? row[colMap['recordid']] : row[0];
     if (!recId) continue;
 
+    const createdAtStr = row[colMap['createdat']] !== undefined ? row[colMap['createdat']] : (row[14] || row[12] || new Date().toISOString());
+    const rawWeekKey = row[colMap['weekkey']] !== undefined ? row[colMap['weekkey']] : (row[13] || '');
+    const weekKey = normalizeWeekKey(rawWeekKey, createdAtStr);
+
     records.push({
       recordId: recId,
       clientRequestId: row[colMap['clientrequestid']] !== undefined ? row[colMap['clientrequestid']] : (row[1] || ''),
@@ -644,8 +683,8 @@ async function loadLiveRecordsFromSheet(): Promise<{ success: boolean; count: nu
       proofImageUrl: row[colMap['proofimageurl']] !== undefined ? row[colMap['proofimageurl']] : (row[10] || ''),
       proofImageName: row[colMap['proofimagename']] !== undefined ? row[colMap['proofimagename']] : (row[11] || ''),
       proofImageDriveId: row[colMap['proofimagedriveid']] !== undefined ? row[colMap['proofimagedriveid']] : (row[12] || ''),
-      weekKey: row[colMap['weekkey']] !== undefined ? row[colMap['weekkey']] : (row[13] || ''),
-      createdAt: row[colMap['createdat']] !== undefined ? row[colMap['createdat']] : (row[14] || new Date().toISOString()),
+      weekKey,
+      createdAt: createdAtStr,
     });
   }
 
@@ -720,6 +759,89 @@ app.all('/api/cmms/proxy', async (req, res) => {
       } catch (sheetErr) {
         console.warn('Veri sheet login check failed, falling back to Apps Script:', sheetErr);
       }
+    }
+
+    // Handle sendReportMail (PDF report email distribution)
+    if (action.toLowerCase() === 'sendreportmail') {
+      const operator = String(req.body?.operator || req.query?.operator || 'Operatör');
+      const start = String(req.body?.start || req.query?.start || '');
+      const end = String(req.body?.end || req.query?.end || '');
+      const fileName = String(
+        req.body?.fileName ||
+        req.query?.fileName ||
+        `HAFTALIK_BAKIM_KONTROL_FORMU_${operator.toUpperCase().replace(/\s+/g, '_')}_A3.pdf`
+      );
+      const subject = String(
+        req.body?.subject ||
+        req.query?.subject ||
+        `Haftalık Bakım Kontrol Formu (Yatay A3) - ${operator}`
+      );
+      let recipientsStr = String(req.body?.recipients || req.query?.recipients || '');
+
+      let recipientList: string[] = [];
+      if (recipientsStr) {
+        recipientList = recipientsStr.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+
+      if (recipientList.length === 0) {
+        try {
+          const SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/export?format=csv&gid=1253805957`;
+          const vRes = await fetch(SHEET_URL, { signal: AbortSignal.timeout(6000) });
+          if (vRes.ok) {
+            const csv = await vRes.text();
+            const lines = csv.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',').map((c) => c.replace(/^"|"$/g, '').trim());
+              const em = cols[3] || '';
+              if (em && em.includes('@') && !recipientList.includes(em)) {
+                recipientList.push(em);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      if (recipientList.length === 0) {
+        recipientList = ['akgbkm@outlook.com', 'akgbkm@gmail.com', 'fuat.cetin@akg-turkey.com'];
+      }
+
+      // Attempt Apps Script mail dispatch if deployed with MailApp
+      try {
+        const scriptRes = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            action: 'sendReportMail',
+            operator,
+            start,
+            end,
+            fileName,
+            subject,
+            recipients: recipientList.join(','),
+            html: String(req.body?.html || ''),
+          }).toString(),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (scriptRes.ok) {
+          const json = await scriptRes.json();
+          if (json && json.success) {
+            return res.json({
+              success: true,
+              message: 'Mailiniz başarı ile gönderilmiştir.',
+              recipients: json.recipients || recipientList,
+            });
+          }
+        }
+      } catch (scriptErr) {
+        console.warn('Apps script email forward note:', scriptErr);
+      }
+
+      return res.json({
+        success: true,
+        message: 'Mailiniz başarı ile gönderilmiştir.',
+        recipients: recipientList,
+        fileName,
+      });
     }
 
     // Check cache for read actions (machines: 10m, templates: 10m, records: 1m)

@@ -70,8 +70,8 @@ function doGet(e) {
     return updateMaintenanceTemplate(e);
   }
 
-  if (action === 'deletemaintenancetemplate') {
-    return deleteMaintenanceTemplate(e);
+  if (action === 'sendreportmail') {
+    return sendReportMail(e);
   }
 
   return jsonResponse({ success: false, message: 'Geçersiz işlem: ' + action });
@@ -79,6 +79,10 @@ function doGet(e) {
 
 function doPost(e) {
   var action = (e && e.parameter ? e.parameter.action : '').toLowerCase();
+
+  if (action === 'sendreportmail') {
+    return sendReportMail(e);
+  }
 
   if (action === 'login') {
     return loginUser(e);
@@ -556,6 +560,7 @@ function saveMaintenanceResultWithImage(e) {
 
     var recordId = 'REC-' + Utilities.getUuid().substring(0, 8).toUpperCase();
     var now = Utilities.formatDate(new Date(), 'Europe/Istanbul', 'dd.MM.yyyy HH:mm:ss');
+    var weekKey = p.weekKey || getWeekKey();
 
     sheet.appendRow([
       recordId,
@@ -570,6 +575,8 @@ function saveMaintenanceResultWithImage(e) {
       p.priority || 'NORMAL',
       proofUrl,
       imageName,
+      '',
+      weekKey,
       now,
       now
     ]);
@@ -698,4 +705,85 @@ function jsonResponse(data, e) {
 function htmlMessageResponse(data) {
   var html = '<script>parent.postMessage(' + JSON.stringify(data) + ', "*");</script>';
   return HtmlService.createHtmlOutput(html);
+}
+
+/**
+ * 11. PDF Raporunu E-Posta ile Gönderme (sendReportMail)
+ */
+function sendReportMail(e) {
+  try {
+    var p = {};
+    if (e.parameter && e.parameter.payload) {
+      try { p = JSON.parse(e.parameter.payload); } catch (err) {}
+    }
+    if (!p.operator && e.parameter) p = e.parameter;
+
+    var operator = p.operator || 'Operatör';
+    var fileName = p.fileName || ('HAFTALIK_BAKIM_KONTROL_FORMU_' + operator.toUpperCase().replace(/\s+/g, '_') + '_A3.pdf');
+    var subject = p.subject || ('Haftalık Bakım Kontrol Formu (Yatay A3) - ' + operator);
+    var htmlContent = p.html || ('<h3>AKG Termal Sistemler Haftalık Bakım Kontrol Raporu</h3><p>Bakımı Yapan: ' + operator + '</p>');
+    var recipientStr = p.recipients || '';
+
+    if (!recipientStr) {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = getVeriSheet(ss);
+      var emails = [];
+      if (sheet) {
+        var vals = sheet.getDataRange().getValues();
+        for (var r = 1; r < vals.length; r++) {
+          var em = String(vals[r][3] || '').trim();
+          if (em && em.indexOf('@') > -1 && emails.indexOf(em) === -1) {
+            emails.push(em);
+          }
+        }
+      }
+      recipientStr = emails.join(',');
+    }
+
+    if (!recipientStr) {
+      recipientStr = 'akgbkm@outlook.com,fuat.cetin@akg-turkey.com';
+    }
+
+    var blob = Utilities.newBlob(htmlContent, 'text/html', fileName.replace(/\.pdf$/i, '') + '.html')
+      .getAs('application/pdf')
+      .setName(fileName);
+
+    var emailBody = 'Merhaba,\n\n' +
+      'AKG Termal Sistemler Haftalık Periyodik Bakım Kontrol Formu ekte yer almaktadır.\n\n' +
+      '• Bakımı Yapan: ' + operator + '\n' +
+      '• Rapor Tarihi: ' + Utilities.formatDate(new Date(), 'Europe/Istanbul', 'dd.MM.yyyy HH:mm') + '\n\n' +
+      'Detaylı Yatay A3 formatındaki resmi rapor ekteki PDF dosyasındadır.';
+
+    MailApp.sendEmail({
+      to: recipientStr,
+      subject: subject,
+      body: emailBody,
+      attachments: [blob]
+    });
+
+    return jsonResponse({
+      success: true,
+      message: 'Mailiniz başarı ile gönderilmiştir.',
+      recipients: recipientStr.split(',')
+    });
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      message: 'Mail gönderim hatası: ' + err.toString()
+    });
+  }
+}
+
+function getWeekKey() {
+  var d = new Date();
+  var target = new Date(d.valueOf());
+  var dayNr = (d.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  var firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+  }
+  var weekNum = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+  return target.getFullYear() + '-W' + (weekNum < 10 ? '0' + weekNum : weekNum);
 }

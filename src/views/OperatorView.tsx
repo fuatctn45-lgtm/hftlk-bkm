@@ -8,7 +8,7 @@ import {
   DEPARTMENTS,
   DepartmentConfig,
 } from '../types/cmms';
-import { getWeekKey, cmmsApi } from '../services/cmmsApi';
+import { getWeekKey, normalizeWeekKey, cmmsApi } from '../services/cmmsApi';
 import { uploadQueueService, QueuedRecord } from '../services/uploadQueue';
 import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { analyzeMaintenancePhoto } from '../services/geminiService';
@@ -31,12 +31,15 @@ import {
   QrCode,
   ArrowRight,
   ChevronRight,
+  ChevronLeft,
   Layers,
   Wrench,
   CheckCircle,
   MapPin,
   Filter,
+  Eye,
 } from 'lucide-react';
+import { PerformedMaintenanceModal } from '../components/PerformedMaintenanceModal';
 
 interface OperatorViewProps {
   user: UserSession;
@@ -45,6 +48,8 @@ interface OperatorViewProps {
   records: MaintenanceRecord[];
   onRecordSaved: () => void;
   onNavigateHome: () => void;
+  initialMachine?: Machine | null;
+  initialTemplateId?: string | null;
 }
 
 
@@ -199,10 +204,12 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   records,
   onRecordSaved,
   onNavigateHome,
+  initialMachine,
+  initialTemplateId,
 }) => {
   // Navigation step within operator panel
-  const [subStep, setSubStep] = useState<'machines' | 'qr' | 'tasks' | 'control'>('machines');
-  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
+  const [subStep, setSubStep] = useState<'machines' | 'qr' | 'tasks' | 'control'>(initialMachine ? 'tasks' : 'machines');
+  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(initialMachine || null);
   const [selectedTask, setSelectedTask] = useState<MaintenanceTemplate | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -241,22 +248,72 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     return uploadQueueService.subscribe(setUploadQueue);
   }, []);
 
-  // Helper: map a machine & template to its status for current week
-  const getTaskStatus = (machineId: string, templateId: string): 'bekleyen' | 'tamamlanan' | 'red' => {
+  const [performedModalOpen, setPerformedModalOpen] = useState(false);
+
+  // Helper: find existing record for a task
+  const findExistingRecord = (machineId: string, templateId: string): MaintenanceRecord | null => {
+    const cleanMid = (machineId || '').trim().toLowerCase();
+    const cleanTid = (templateId || '').trim().toLowerCase();
+
     // 1. Check pending items in local upload queue first (0ms latency!)
-    const queued = uploadQueue.find(
-      (q) => (q.machineId === machineId || q.machineName === machineId) && q.templateId === templateId
-    );
+    const queued = uploadQueue.find((q) => {
+      const qTid = (q.templateId || '').trim().toLowerCase();
+      if (qTid !== cleanTid) return false;
+      const qMid = (q.machineId || '').trim().toLowerCase();
+      const qMName = (q.machineName || '').trim().toLowerCase();
+      return (
+        qMid === cleanMid ||
+        qMName === cleanMid ||
+        (cleanMid && (qMid.includes(cleanMid) || cleanMid.includes(qMid)))
+      );
+    });
     if (queued) {
-      return queued.result === 'RED' ? 'red' : 'tamamlanan';
+      return {
+        recordId: queued.id,
+        machineId: queued.machineId,
+        machineName: queued.machineName,
+        templateId: queued.templateId,
+        task: queued.task,
+        measuredValue: queued.measuredValue,
+        result: queued.result,
+        description: queued.description,
+        operator: queued.operator,
+        operatorRole: queued.operatorRole,
+        proofImageUrl: queued.proofImageUrl,
+        weekKey: currentWeek,
+        createdAt: new Date(queued.timestamp).toISOString(),
+        date: new Date(queued.timestamp).toLocaleDateString('tr-TR'),
+        time: new Date(queued.timestamp).toLocaleTimeString('tr-TR'),
+      };
     }
 
     // 2. Check synced records from cloud
-    const record = records.find(
-      (r) => (r.machineId === machineId || r.machineName === machineId) && r.templateId === templateId && r.weekKey === currentWeek
+    const matching = records.filter((r) => {
+      const rTid = (r.templateId || '').trim().toLowerCase();
+      if (rTid !== cleanTid) return false;
+      const rMid = (r.machineId || '').trim().toLowerCase();
+      const rMName = (r.machineName || '').trim().toLowerCase();
+      return (
+        rMid === cleanMid ||
+        rMName === cleanMid ||
+        (cleanMid && (rMid.includes(cleanMid) || cleanMid.includes(rMid)))
+      );
+    });
+
+    if (matching.length === 0) return null;
+
+    // Sadece bu haftanın kaydını döndür
+    const currentWeekRec = matching.find(
+      (r) => normalizeWeekKey(r.weekKey, r.createdAt) === currentWeek
     );
-    if (!record) return 'bekleyen';
-    return record.result === 'RED' ? 'red' : 'tamamlanan';
+    return currentWeekRec || null;
+  };
+
+  // Helper: map a machine & template to its status (bekleyen, tamamlanan / OK, red)
+  const getTaskStatus = (machineId: string, templateId: string): 'bekleyen' | 'tamamlanan' | 'red' => {
+    const rec = findExistingRecord(machineId, templateId);
+    if (!rec) return 'bekleyen';
+    return String(rec.result || '').toUpperCase().includes('RED') ? 'red' : 'tamamlanan';
   };
 
   // Helper: match department config
@@ -383,6 +440,25 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
   // Tasks for selected machine
   const machineTasks = selectedMachine ? getMachineTasks(selectedMachine) : [];
+
+  // Computed task statistics for the selected machine
+  const currentTaskIndex = selectedTask && selectedMachine
+    ? machineTasks.findIndex((t) => t.templateId === selectedTask.templateId)
+    : -1;
+  const currentTaskNumber = currentTaskIndex >= 0 ? currentTaskIndex + 1 : (selectedTask?.orderNo || 1);
+  const totalTasksCount = machineTasks.length;
+  const completedTasks = selectedMachine
+    ? machineTasks.filter((t) => getTaskStatus(selectedMachine.id, t.templateId) !== 'bekleyen')
+    : [];
+  const completedCount = completedTasks.length;
+  const remainingCount = Math.max(0, totalTasksCount - completedCount);
+  const okTasks = selectedMachine
+    ? machineTasks.filter((t) => getTaskStatus(selectedMachine.id, t.templateId) === 'tamamlanan')
+    : [];
+  const redTasks = selectedMachine
+    ? machineTasks.filter((t) => getTaskStatus(selectedMachine.id, t.templateId) === 'red')
+    : [];
+  const faultOrder = selectedTask ? redTasks.findIndex((t) => t.templateId === selectedTask.templateId) : -1;
 
   // Regional filter state (e.g. "AZOT SİSTEMİ", "FAN SİSTEMİ", etc.)
   const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>('all');
@@ -591,13 +667,29 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
     };
   }, [subStep, qrScanning, selectedMachine]);
 
-  // Select a task to perform control
+  // Select a task to perform control (Pre-populates existing record if already performed)
   const handleOpenTask = (task: MaintenanceTemplate) => {
     setSelectedTask(task);
-    setMeasuredValue('');
-    setResult('');
-    setDescription('');
-    setProofImage(null);
+    const existing = selectedMachine ? findExistingRecord(selectedMachine.id, task.templateId) : null;
+    if (existing) {
+      setMeasuredValue(existing.measuredValue || '');
+      setResult((existing.result as 'UYGUN' | 'RED') || 'UYGUN');
+      setDescription(existing.description || '');
+      let proof = existing.proofImageUrl || null;
+      if (!proof && selectedMachine) {
+        try {
+          proof = localStorage.getItem(`proofImg_${selectedMachine.id}_${task.templateId}`) ||
+                  localStorage.getItem(`proofImg_${task.templateId}`) ||
+                  null;
+        } catch {}
+      }
+      setProofImage(proof);
+    } else {
+      setMeasuredValue('');
+      setResult('');
+      setDescription('');
+      setProofImage(null);
+    }
     setProofImageFile(null);
     setSaveMessage(null);
     setAiAnalysisResult(null);
@@ -801,7 +893,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-400 text-black font-black shadow-md shadow-yellow-500/20">
                 <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">3</span>
-                <span>Madde #{selectedTask.orderNo || 1}</span>
+                <span>Madde #{currentTaskNumber} ({currentTaskNumber}/{totalTasksCount})</span>
               </div>
             </>
           )}
@@ -1002,10 +1094,23 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                         return (
                           <span
                             key={t.templateId}
-                            title={`${idx + 1}. ${t.task} (${st.toUpperCase()})`}
-                            className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg font-black text-[11px] sm:text-xs flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${bg}`}
+                            title={`${idx + 1}. ${t.task} (${st.toUpperCase()}) - ${st !== 'bekleyen' ? 'Yapılan kontrol detayını gör' : 'Bekliyor'}`}
+                            onClick={(e) => {
+                              if (st !== 'bekleyen') {
+                                e.stopPropagation();
+                                setSelectedMachine(m);
+                                setPerformedModalOpen(true);
+                              }
+                            }}
+                            className={`min-w-[28px] px-1 h-6 sm:h-7 rounded-lg font-black text-[10px] sm:text-xs flex items-center justify-center shrink-0 transition-transform hover:scale-110 cursor-pointer ${bg}`}
                           >
-                            {idx + 1}
+                            {st === 'tamamlanan' ? (
+                              <span className="text-[10px] font-black text-black">OK</span>
+                            ) : st === 'red' ? (
+                              <span className="text-[9px] font-black text-white animate-pulse">RED</span>
+                            ) : (
+                              <span>{idx + 1}</span>
+                            )}
                           </span>
                         );
                       })}
@@ -1031,11 +1136,28 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                   </div>
 
                   {/* Card Bottom CTA */}
-                  <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs font-bold">
-                    <span className="text-slate-400">
-                      {isAllDone ? '✔ Kontroller Tamam' : hasRed ? '⚠️ Açık RED Kaydı' : 'Kontrol Bekliyor'}
-                    </span>
-                    <span className="text-yellow-400 font-black group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                  <div className="pt-2.5 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs font-bold gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">
+                        {isAllDone ? '✔ Kontroller Tamam' : hasRed ? '⚠️ Açık RED Kaydı' : 'Kontrol Bekliyor'}
+                      </span>
+                      {completedCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMachine(m);
+                            setPerformedModalOpen(true);
+                          }}
+                          className="px-2 py-0.5 bg-yellow-400/15 hover:bg-yellow-400 hover:text-black text-yellow-400 text-[11px] font-black rounded-md border border-yellow-400/30 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                          title="Bu makinede yapılan kontrolleri incele"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Yapılanları Gör ({completedCount})</span>
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-yellow-400 font-black group-hover:translate-x-1 transition-transform flex items-center gap-1 shrink-0">
                       <span>Bakıma Başla</span>
                       <ArrowRight className="w-3.5 h-3.5 text-yellow-400" />
                     </span>
@@ -1183,9 +1305,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   // VIEW 3: TASKS CHECKLIST (Sarı-Siyah)
   // ==========================================
   if (subStep === 'tasks') {
-    const completedCount = machineTasks.filter(
-      (t) => getTaskStatus(selectedMachine!.id, t.templateId) !== 'bekleyen'
-    ).length;
     const progressPercent = machineTasks.length > 0 ? Math.round((completedCount / machineTasks.length) * 100) : 0;
 
     return (
@@ -1205,8 +1324,10 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             </div>
 
             <div className="text-right">
-              <div className="text-xs font-black text-yellow-400">%{progressPercent} Tamamlandı</div>
-              <div className="text-[11px] text-slate-400 font-semibold">{completedCount} / {machineTasks.length} Kontrol</div>
+              <div className="text-sm sm:text-base font-black text-yellow-400">%{progressPercent}</div>
+              <div className="text-xs text-slate-300 font-semibold">
+                {completedCount} / {machineTasks.length} Kontrol
+              </div>
             </div>
           </div>
 
@@ -1217,6 +1338,22 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               style={{ width: `${progressPercent}%` }}
             />
           </div>
+
+          {completedCount > 0 && (
+            <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between gap-2">
+              <span className="text-xs text-slate-300 font-medium">
+                Tamamlanan kontrolleri inceleyin:
+              </span>
+              <button
+                type="button"
+                onClick={() => setPerformedModalOpen(true)}
+                className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-black rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+              >
+                <Eye className="w-3.5 h-3.5 text-black" />
+                <span>Yapılan Bakımları Gör ({completedCount})</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Department Colors Legend */}
@@ -1350,6 +1487,9 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             const st = getTaskStatus(selectedMachine!.id, t.templateId);
             const dept = getDepartmentConfig(t.system);
             const deptStyle = getDeptDisplayStyle(dept);
+            const globalIdx = machineTasks.findIndex((mt) => mt.templateId === t.templateId);
+            const taskNumber = globalIdx >= 0 ? globalIdx + 1 : idx + 1;
+            const itemFaultOrder = redTasks.findIndex((rt) => rt.templateId === t.templateId);
 
             return (
               <button
@@ -1387,7 +1527,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
 
                 {/* Step Number with status indicator */}
                 <div
-                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl font-black text-xs sm:text-sm shrink-0 flex items-center justify-center border shadow-xs ${
+                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl font-black text-xs sm:text-sm shrink-0 flex items-center justify-center border shadow-xs ${
                     st === 'red'
                       ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
                       : st === 'tamamlanan'
@@ -1395,44 +1535,59 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
                       : deptStyle.stepNumberClass
                   }`}
                 >
-                  {idx + 1}
+                  {st === 'red' ? (
+                    <div className="flex flex-col items-center leading-none">
+                      <span className="text-[10px] sm:text-xs font-black">RED</span>
+                      {itemFaultOrder >= 0 && (
+                        <span className="text-[8px] font-mono font-bold opacity-90">#{itemFaultOrder + 1}</span>
+                      )}
+                    </div>
+                  ) : st === 'tamamlanan' ? (
+                    <span className="text-[11px] sm:text-xs font-black">OK</span>
+                  ) : (
+                    taskNumber
+                  )}
                 </div>
 
                 {/* Task Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-black text-xs sm:text-sm leading-snug mb-1 text-yellow-400 break-words drop-shadow-xs">
+                  <div className="font-black text-xs sm:text-sm leading-snug mb-1 text-white group-hover:text-yellow-400 transition-colors break-words">
                     {t.task}
                   </div>
                   <div className="text-[11px] text-slate-400 font-medium flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span>Bölge: <b className="text-slate-300">{t.region || '-'}</b></span>
-                    {t.part && <span>· Parça: <b className="text-slate-300">{t.part}</b></span>}
-                    {t.targetValue && <span>· Hedef: <b className={deptStyle.targetColor}>{t.targetValue}</b></span>}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border flex items-center gap-1 ${deptStyle.badgeClass}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${deptStyle.dotColor}`} />
-                      <span>{dept?.ad || t.system || 'Genel'}</span>
-                    </span>
+                    {t.targetValue && <span>Hedef: <b className="text-yellow-400 font-bold">{t.targetValue}</b></span>}
+                    {t.region && <span>· Bölge: <b className="text-slate-300">{t.region}</b></span>}
                     {isTaskPhotoMandatory(t) && (
-                      <span className="text-[10px] font-black bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-md flex items-center gap-1">
-                        <Camera className="w-3 h-3 text-rose-400" />
-                        <span>Fotoğraf Zorunlu</span>
+                      <span className="text-rose-400 font-bold flex items-center gap-1">
+                        <Camera className="w-3 h-3" />
+                        <span>Fotoğraflı</span>
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Status icon right */}
-                <div className="shrink-0 self-center">
+                <div className="shrink-0 self-center flex items-center gap-1.5">
+                  {st !== 'bekleyen' && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPerformedModalOpen(true);
+                      }}
+                      title="Yapılan kontrol kaydını ve fotoğrafı incele"
+                      className="p-1.5 rounded-lg bg-yellow-400/20 text-yellow-400 hover:bg-yellow-400 hover:text-black transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </span>
+                  )}
                   {st === 'red' ? (
-                    <span className="px-2 py-1 bg-rose-600 text-white text-xs font-black rounded-lg">
+                    <span className="px-2.5 py-1 bg-rose-600 text-white text-xs font-black rounded-lg animate-pulse">
                       RED
                     </span>
                   ) : st === 'tamamlanan' ? (
-                    <span className="px-2 py-1 bg-emerald-500 text-black text-xs font-black rounded-lg flex items-center gap-1">
-                      <Check className="w-3 h-3" />
-                      <span>Tamam</span>
+                    <span className="px-2.5 py-1 bg-emerald-500 text-black text-xs font-black rounded-lg flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>OK</span>
                     </span>
                   ) : (
                     <span className={`px-2.5 py-1 text-xs font-black rounded-lg flex items-center gap-1 shadow-sm ${deptStyle.btnClass}`}>
@@ -1461,7 +1616,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const saveDisabled = saveLoading || (isPhotoRequired && !proofImage);
 
   // Audio briefing text for TTS
-  const taskSpeechText = `${selectedMachine?.machineName}, ${selectedTask?.orderNo || 1}. bakım kontrolü. Görev: ${selectedTask?.task}. İlgili birim: ${dept?.ad || selectedTask?.system || 'Belirtilmemiş'}. Bölge: ${selectedTask?.region || 'Genel'}. İstenen hedef değer: ${selectedTask?.targetValue || 'Görsel uygunluk'}. ${isPhotoRequired ? 'Uyarı: Yönetici bu bakım için kanıt fotoğrafı istemektedir.' : ''}`;
+  const taskSpeechText = `${selectedMachine?.machineName}, ${currentTaskNumber}. bakım kontrolü. Toplam ${totalTasksCount} kontrolden ${currentTaskNumber}'incisi, ${remainingCount} kontrol kaldı. ${faultOrder >= 0 ? `Bu kontrol ${faultOrder + 1}. arızadır.` : ''} Görev: ${selectedTask?.task}. İlgili birim: ${dept?.ad || selectedTask?.system || 'Belirtilmemiş'}. Bölge: ${selectedTask?.region || 'Genel'}. İstenen hedef değer: ${selectedTask?.targetValue || 'Görsel uygunluk'}. ${isPhotoRequired ? 'Uyarı: Yönetici bu bakım için kanıt fotoğrafı istemektedir.' : ''}`;
 
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-6 py-3 sm:py-5 space-y-3.5">
@@ -1474,9 +1629,14 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider block truncate">
               {selectedMachine?.machineName}
             </span>
-            <h2 className="text-base sm:text-lg font-black text-white">
-              {selectedTask?.orderNo || 1}. Kontrol Maddesi
-            </h2>
+            <div className="flex items-center gap-2 mt-0.5">
+              <h2 className="text-base sm:text-lg font-black text-white">
+                {currentTaskNumber}. Kontrol Maddesi
+              </h2>
+              <span className="text-xs font-black px-2 py-0.5 rounded-lg bg-yellow-400 text-black border border-yellow-300">
+                {currentTaskNumber} / {totalTasksCount}
+              </span>
+            </div>
           </div>
 
           <AudioPlayerButton
@@ -1567,6 +1727,36 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
             : 'bg-[#1b263b] border-slate-800'
         }`}
       >
+        {/* Previous Record Notice if already completed */}
+        {(() => {
+          const prevRec = selectedMachine && selectedTask ? findExistingRecord(selectedMachine.id, selectedTask.templateId) : null;
+          if (!prevRec) return null;
+          return (
+            <div className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
+              prevRec.result === 'RED'
+                ? 'bg-rose-950/60 border-rose-500/80 text-rose-200'
+                : 'bg-emerald-950/50 border-emerald-500/80 text-emerald-200'
+            }`}>
+              <div className="text-xs space-y-0.5 min-w-0">
+                <div className="font-black flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Bu kontrol daha önce tamamlanmıştır (Mevcut Kayıt Açık)</span>
+                </div>
+                <div className="text-[11px] opacity-85">
+                  Yapan: <b>{prevRec.operator}</b> • {prevRec.createdAt ? new Date(prevRec.createdAt).toLocaleString('tr-TR') : prevRec.date} • Sonuç: <b className="font-mono">{prevRec.result}</b>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPerformedModalOpen(true)}
+                className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-black rounded-lg shrink-0 cursor-pointer shadow-sm transition-all"
+              >
+                Tüm Detayları Gör
+              </button>
+            </div>
+          );
+        })()}
+
         {/* Measured Value Input */}
         {selectedTask?.targetValue && (
           <div className={`p-3.5 rounded-xl border ${deptStyle.inputWrapperClass}`}>
@@ -1605,7 +1795,7 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               }`}
             >
               <CheckCircle2 className={`w-5 h-5 ${result === 'UYGUN' ? 'text-black' : 'text-emerald-400'}`} />
-              <span>UYGUN</span>
+              <span>OK (UYGUN)</span>
             </button>
 
             <button
@@ -1877,6 +2067,19 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Yapılan Bakımlar Görünümü Modalı */}
+      <PerformedMaintenanceModal
+        isOpen={performedModalOpen}
+        onClose={() => setPerformedModalOpen(false)}
+        machine={selectedMachine}
+        records={records}
+        templates={templates}
+        onEditTask={(t) => {
+          setPerformedModalOpen(false);
+          handleOpenTask(t);
+        }}
+      />
     </div>
   );
 };

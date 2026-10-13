@@ -23,6 +23,42 @@ export function getLastWeekKey(): string {
   return getWeekKey(d);
 }
 
+/**
+ * Robustly normalizes week key from various formats:
+ * - standard ISO: "2026-W42"
+ * - Turkish date: "12.10.2026 16:11:26"
+ * - ISO date: "2026-10-12"
+ * - Google GViz Date(2026,9,12...)
+ */
+export function normalizeWeekKey(rawVal?: any, createdAtVal?: any): string {
+  const raw = String(rawVal || '').trim();
+  if (/^\d{4}-W\d{1,2}$/i.test(raw)) {
+    return raw.toUpperCase();
+  }
+
+  const dateStr = raw.includes('.') || raw.includes('-') || raw.includes('/') ? raw : String(createdAtVal || '');
+
+  const trMatch = dateStr.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (trMatch) {
+    const d = new Date(Number(trMatch[3]), Number(trMatch[2]) - 1, Number(trMatch[1]));
+    if (!isNaN(d.getTime())) return getWeekKey(d);
+  }
+
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const d = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+    if (!isNaN(d.getTime())) return getWeekKey(d);
+  }
+
+  const gvizMatch = dateStr.match(/Date\((\d+),(\d+),(\d+)/);
+  if (gvizMatch) {
+    const d = new Date(Number(gvizMatch[1]), Number(gvizMatch[2]), Number(gvizMatch[3]));
+    if (!isNaN(d.getTime())) return getWeekKey(d);
+  }
+
+  return getWeekKey();
+}
+
 // Storage helpers
 export function getStoredUser(): UserSession | null {
   try {
@@ -690,18 +726,19 @@ export const cmmsApi = {
       window.location.protocol === 'file:'
     );
 
-    // Static host direct GViz loader
-    if (isDirectStaticOnly) {
+    const fetchFromGviz = async (): Promise<MaintenanceRecord[]> => {
       try {
-        const gviz = await fetchGvizJsonp('weeklyMaintenanceRecords', 10000);
-        if (gviz?.table?.rows) {
-          const records: MaintenanceRecord[] = [];
+        const gviz = await fetchGvizJsonp('weeklyMaintenanceRecords', 12000);
+        if (gviz?.table?.rows && gviz.table.rows.length > 0) {
+          const parsedRecords: MaintenanceRecord[] = [];
           gviz.table.rows.forEach((r: any) => {
             const c = r.c || [];
             const recId = String(c[0]?.v || '').trim();
             if (!recId || recId.toUpperCase() === 'RECORDID') return;
             const res = String(c[6]?.v || '').toUpperCase().includes('RED') ? 'RED' : 'UYGUN';
-            records.push({
+            const createdAtStr = String(c[14]?.v || c[12]?.v || new Date().toISOString()).trim();
+            const weekKeyVal = normalizeWeekKey(c[13]?.v, createdAtStr);
+            parsedRecords.push({
               recordId: recId,
               clientRequestId: String(c[1]?.v || '').trim(),
               templateId: String(c[2]?.v || '').trim(),
@@ -712,24 +749,32 @@ export const cmmsApi = {
               measuredValue: String(c[7]?.v || '').trim(),
               description: String(c[8]?.v || '').trim(),
               proofImageUrl: String(c[10]?.v || '').trim(),
-              weekKey: String(c[13]?.v || getWeekKey()).trim(),
-              createdAt: String(c[14]?.v || new Date().toISOString()).trim(),
+              weekKey: weekKeyVal,
+              createdAt: createdAtStr,
             });
           });
-          if (records.length > 0) {
-            localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(records));
-            return records;
+          if (parsedRecords.length > 0) {
+            localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(parsedRecords));
+            return parsedRecords;
           }
         }
       } catch (e) {
         console.warn('GViz getRecords warning:', e);
       }
+      return [];
+    };
+
+    // 1. Static host (GitHub Pages / file://) loads directly from GViz
+    if (isDirectStaticOnly) {
+      const gvizRecords = await fetchFromGviz();
+      if (gvizRecords.length > 0) return gvizRecords;
     }
 
+    // 2. Try Apps Script API
     try {
       const data = await callCmmsApi('listMaintenanceRecords', {}, { timeout: 15000 });
 
-      if (data && data.success && Array.isArray(data.records)) {
+      if (data && data.success && Array.isArray(data.records) && data.records.length > 0) {
         const normalized: MaintenanceRecord[] = data.records.map((r: any) => ({
           recordId: r.recordId || '',
           templateId: r.templateId || '',
@@ -740,7 +785,7 @@ export const cmmsApi = {
           measuredValue: r.measuredValue || '',
           description: r.description || '',
           proofImageUrl: r.proofImageUrl || '',
-          weekKey: r.weekKey || getWeekKey(),
+          weekKey: normalizeWeekKey(r.weekKey, r.createdAt),
           createdAt: r.createdAt || new Date().toISOString(),
           task: r.task || '',
           system: r.system || '',
@@ -752,15 +797,21 @@ export const cmmsApi = {
         return normalized;
       }
     } catch (err) {
-      console.warn('Could not fetch records from live sheet, using cache:', err);
+      console.warn('Could not fetch records via Apps Script, trying GViz fallback:', err);
     }
 
-    // Try reading cached records
+    // 3. Robust GViz fallback whenever Apps Script returns 0 records or times out
+    const fallbackRecords = await fetchFromGviz();
+    if (fallbackRecords.length > 0) {
+      return fallbackRecords;
+    }
+
+    // 4. Try reading cached records
     const cached = localStorage.getItem(CACHE_RECORDS_KEY);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
     }
 

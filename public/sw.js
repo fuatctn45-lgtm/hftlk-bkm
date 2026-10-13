@@ -1,42 +1,53 @@
 // AKG CMMS Service Worker for Android & iOS PWA
-const CACHE_NAME = 'akg-cmms-v5.5.0';
+const CACHE_NAME = 'akg-cmms-v5.5.0-build';
 
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/manifest.json',
-  '/pwa-192x192.png',
-  '/pwa-512x512.png',
-  '/pwa-maskable-512x512.png',
-  '/apple-touch-icon.png',
-  '/icon.svg',
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './manifest.json',
+  './pwa-192x192.png',
+  './pwa-512x512.png',
+  './pwa-maskable-512x512.png',
+  './apple-touch-icon.png',
+  './icon.svg',
 ];
 
 // Install: Cache critical assets and activate immediately
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('[PWA SW] Precache warning:', err);
-      });
+      return Promise.all(
+        PRECACHE_ASSETS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn('[PWA SW] Precache warning for', url, err);
+          })
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });
 
-// Activate: Claim clients and delete old caches
+// Activate: Claim clients and delete old caches immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('[PWA SW] Deleting old cache:', key);
             return caches.delete(key);
           }
         })
       );
     }).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Fetch: Network-first for API & navigation, Cache-first / Stale-while-revalidate for assets
