@@ -123,15 +123,8 @@ export const Header: React.FC<HeaderProps> = ({
     {
       id: 'home' as const,
       label: 'Ana Sayfa',
-      desc: 'Bakım panosu ve KPI göstergeleri',
+      desc: 'Haftalık makine bakım durumu ve KPI göstergeleri',
       icon: Home,
-      color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
-    },
-    {
-      id: 'operator' as const,
-      label: 'Operatör Bakım Paneli',
-      desc: 'Makine seçimi, QR kontrol ve bakım adımları',
-      icon: Wrench,
       color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
     },
     {
@@ -167,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand Identity & Active Operator */}
         <div
-          onClick={() => handleSelectNav('operator')}
+          onClick={() => handleSelectNav('home')}
           className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group select-none shrink-0"
         >
           <div className="bg-yellow-400 text-black rounded-lg px-1.5 py-0.5 shadow-xs group-hover:scale-102 transition-transform shrink-0 border border-yellow-300 flex items-center justify-center">

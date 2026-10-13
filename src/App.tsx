@@ -63,7 +63,7 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(getStoredUser);
   const [currentScreen, setCurrentScreen] = useState<
     'home' | 'operator' | 'redList' | 'reports' | 'admin'
-  >('operator');
+  >('home');
 
   // Instant SWR state: Initialize immediately from local cache so app opens in 0ms
   const initialCachedMachines = getCachedMachines();

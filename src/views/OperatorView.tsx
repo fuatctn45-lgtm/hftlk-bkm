@@ -206,19 +206,53 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   initialMachine,
   initialTemplateId,
 }) => {
+  const isAdmin = String(user.role || '').toLowerCase().includes('admin');
+  const currentWeek = getWeekKey();
+
+  // Target template if arriving from a specific task click
+  const [targetTemplateId, setTargetTemplateId] = useState<string | null>(initialTemplateId || null);
+
   // Navigation step within operator panel
-  const [subStep, setSubStep] = useState<'machines' | 'qr' | 'tasks' | 'control'>(initialMachine ? 'tasks' : 'machines');
+  // When an operator clicks a machine from home or list, they MUST scan the QR code first!
+  const [subStep, setSubStep] = useState<'machines' | 'qr' | 'tasks' | 'control'>(() => {
+    if (initialMachine) {
+      return isAdmin ? 'tasks' : 'qr';
+    }
+    return 'machines';
+  });
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(initialMachine || null);
   const [selectedTask, setSelectedTask] = useState<MaintenanceTemplate | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // QR Scanning state
-  const [qrScanning, setQrScanning] = useState(false);
+  // QR Scanning state: starts immediately if arriving with initialMachine for operator
+  const [qrScanning, setQrScanning] = useState<boolean>(() => {
+    if (initialMachine && !isAdmin) {
+      return true;
+    }
+    return false;
+  });
   const [qrError, setQrError] = useState<string | null>(null);
   const [qrSuccessMessage, setQrSuccessMessage] = useState<string | null>(null);
   const [wrongQrModal, setWrongQrModal] = useState<{ expected: string; scanned: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanLoopRef = useRef<number | null>(null);
+
+  // Sync state when initialMachine or initialTemplateId changes
+  useEffect(() => {
+    if (initialMachine) {
+      setSelectedMachine(initialMachine);
+      setTargetTemplateId(initialTemplateId || null);
+      if (isAdmin) {
+        setSubStep('tasks');
+        setQrScanning(false);
+      } else {
+        setSubStep('qr');
+        setQrScanning(true);
+        setQrError(null);
+        setQrSuccessMessage(null);
+      }
+    }
+  }, [initialMachine, initialTemplateId, isAdmin]);
 
   // Control / Form state
   const [measuredValue, setMeasuredValue] = useState('');
@@ -237,9 +271,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<string | null>(null);
   const [aiAnalysisVerdict, setAiAnalysisVerdict] = useState<'UYGUN' | 'RED' | null>(null);
-
-  const isAdmin = String(user.role || '').toLowerCase().includes('admin');
-  const currentWeek = getWeekKey();
 
   // Real-time background upload queue
   const [uploadQueue, setUploadQueue] = useState<QueuedRecord[]>(() => uploadQueueService.getQueue());
@@ -544,6 +575,15 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
       setQrSuccessMessage(`QR Doğrulandı: ${selectedMachine.machineName} ✔`);
       setTimeout(() => {
         setQrSuccessMessage(null);
+        if (targetTemplateId) {
+          const mTasks = getMachineTasks(selectedMachine);
+          const t = mTasks.find((item) => item.templateId === targetTemplateId);
+          if (t) {
+            handleOpenTask(t);
+            setTargetTemplateId(null);
+            return;
+          }
+        }
         setSubStep('tasks');
       }, 700);
     } else {
@@ -860,38 +900,34 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-bold text-slate-300 shrink-0">
           <button
             type="button"
-            onClick={() => setSubStep('machines')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              subStep === 'machines'
-                ? 'bg-yellow-400 text-black font-black shadow-md shadow-yellow-500/20'
-                : 'hover:bg-slate-800 text-slate-300'
-            }`}
+            onClick={onNavigateHome}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer hover:bg-slate-800 text-slate-300"
           >
-            <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">1</span>
-            <span>Makineler</span>
+            <span>🏠 Ana Sayfa</span>
           </button>
 
           <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
 
           <button
             type="button"
-            disabled={!selectedMachine}
-            onClick={() => setSubStep('tasks')}
+            disabled={!selectedMachine || (subStep === 'qr' && !isAdmin)}
+            onClick={() => {
+              if (subStep === 'qr' && !isAdmin) return;
+              setSubStep('tasks');
+            }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               subStep === 'tasks' || subStep === 'qr'
                 ? 'bg-yellow-400 text-black font-black shadow-md shadow-yellow-500/20'
                 : 'hover:bg-slate-800 text-slate-300'
             }`}
           >
-            <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">2</span>
-            <span className="truncate max-w-[90px] sm:max-w-xs">{selectedMachine?.machineName || 'Kontrol'}</span>
+            <span className="truncate max-w-[120px] sm:max-w-xs">{selectedMachine?.machineName || 'Makine'}</span>
           </button>
 
           {selectedTask && (
             <>
               <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-400 text-black font-black shadow-md shadow-yellow-500/20">
-                <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">3</span>
                 <span>Madde #{currentTaskNumber} ({currentTaskNumber}/{totalTasksCount})</span>
               </div>
             </>
@@ -1239,7 +1275,19 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               /* ONLY FOR ADMINS: Admin Bypass Button */
               <button
                 type="button"
-                onClick={() => setSubStep('tasks')}
+                onClick={() => {
+                  setQrScanning(false);
+                  if (targetTemplateId && selectedMachine) {
+                    const mTasks = getMachineTasks(selectedMachine);
+                    const t = mTasks.find((item) => item.templateId === targetTemplateId);
+                    if (t) {
+                      handleOpenTask(t);
+                      setTargetTemplateId(null);
+                      return;
+                    }
+                  }
+                  setSubStep('tasks');
+                }}
                 className="w-full py-2.5 px-4 bg-yellow-400/15 hover:bg-yellow-400/25 text-yellow-400 font-black rounded-xl text-xs border border-yellow-500/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
               >
                 <span>⚙️ Admin Yetkisi: QR Doğrulamayı Atla</span>
@@ -1247,15 +1295,44 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               </button>
             )}
 
+            {/* Manuel QR/Barkod Girişi (Kamera izni yoksa veya masaüstü testleri için) */}
+            <div className="pt-2 border-t border-slate-800">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.currentTarget;
+                  const inputEl = form.elements.namedItem('manualQrInput') as HTMLInputElement;
+                  if (inputEl && inputEl.value.trim()) {
+                    handleVerifyQrCode(inputEl.value.trim());
+                    inputEl.value = '';
+                  }
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <input
+                  name="manualQrInput"
+                  type="text"
+                  placeholder="QR / Barkod / Makine Kodu..."
+                  className="flex-1 bg-[#141d2d] border border-slate-700 focus:border-yellow-400 text-xs text-white px-3 py-2 rounded-xl outline-none"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-2 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-xs rounded-xl cursor-pointer shrink-0 transition-transform active:scale-95"
+                >
+                  Doğrula
+                </button>
+              </form>
+            </div>
+
             <button
               type="button"
               onClick={() => {
                 setQrScanning(false);
-                setSubStep('machines');
+                onNavigateHome();
               }}
               className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold rounded-xl text-xs transition-colors cursor-pointer"
             >
-              Farklı Makine Seç
+              ← Ana Sayfaya Dön (Farklı Makine Seç)
             </button>
           </div>
         </div>

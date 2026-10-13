@@ -12,9 +12,8 @@ import {
   Search,
   Check,
   X,
-  Eye,
+  QrCode,
 } from 'lucide-react';
-import { PerformedMaintenanceModal } from '../components/PerformedMaintenanceModal';
 
 interface HomeViewProps {
   user: UserSession;
@@ -38,7 +37,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'completed' | 'hasRed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadQueue, setUploadQueue] = useState<QueuedRecord[]>(() => uploadQueueService.getQueue());
-  const [performedModalMachine, setPerformedModalMachine] = useState<Machine | null>(null);
 
   useEffect(() => {
     return uploadQueueService.subscribe(setUploadQueue);
@@ -167,9 +165,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div
         key={m.id}
         onClick={() => {
-          if (isAllDone) {
-            setPerformedModalMachine(m);
-          } else if (onSelectMachine) {
+          if (onSelectMachine) {
             onSelectMachine(m);
           } else {
             onNavigate('operator');
@@ -221,9 +217,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   title={`${idx + 1}. ${t.task} - ${st === 'tamamlanan' ? 'OK (UYGUN)' : st === 'red' ? 'RED (ARIZA)' : 'BEKLEYEN'} (${st.toUpperCase()})`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (st === 'tamamlanan' || st === 'red') {
-                      setPerformedModalMachine(m);
-                    } else if (onSelectMachine) {
+                    if (onSelectMachine) {
                       onSelectMachine(m, t.templateId);
                     } else {
                       onNavigate('operator');
@@ -244,27 +238,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* Sağ Taraf: Yapılanları Gör Butonu ve Geçiş Oku */}
-        <div className="shrink-0 flex items-center gap-2 text-slate-500 pl-2">
-          {completedCount > 0 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setPerformedModalMachine(m);
-              }}
-              title="Bu makinede yapılan kontrolleri incele"
-              className="px-2.5 py-1.5 bg-yellow-400/15 hover:bg-yellow-400 hover:text-black text-yellow-400 text-xs font-black rounded-lg border border-yellow-400/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Yapılanları Gör</span>
-              <span className="text-[10px] font-mono font-black bg-yellow-400/20 group-hover:bg-black/20 px-1 rounded">
-                {completedCount}/{mTasks.length}
-              </span>
-            </button>
-          )}
-          <div className="group-hover:text-yellow-400 group-hover:translate-x-1 transition-all">
-            <ArrowRight className="w-5 h-5" />
+        {/* Sağ Taraf: QR Giriş İkonu ve Ok */}
+        <div className="shrink-0 flex items-center gap-2 pl-2">
+          <div className="p-2 sm:px-3 sm:py-1.5 bg-yellow-400/15 group-hover:bg-yellow-400 group-hover:text-black text-yellow-400 text-xs font-black rounded-xl border border-yellow-400/30 flex items-center gap-1.5 transition-all shadow-xs">
+            <QrCode className="w-4 h-4 shrink-0" />
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0" />
           </div>
         </div>
       </div>
@@ -282,20 +260,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </span>
           </div>
 
-          <h2 className="text-xl sm:text-3xl font-black tracking-tight mb-4 text-white">
+          <h2 className="text-xl sm:text-3xl font-black tracking-tight mb-2 text-white">
             Hoş Geldiniz, <span className="text-yellow-400">{operatorName}</span>
           </h2>
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => onNavigate('operator')}
-              className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
-            >
-              <Wrench className="w-4 h-4 text-black" />
-              <span>Hemen Bakıma Başla</span>
-            </button>
-          </div>
+          <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-xl">
+            Aşağıdaki makine kartlarına tıklayarak makine üzerindeki sarı QR kodunu okutun ve periyodik bakımı gerçekleştirin.
+          </p>
         </div>
 
         {/* Technical background accents */}
@@ -523,19 +493,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* Yapılan Bakımlar Görünümü Modalı */}
-      <PerformedMaintenanceModal
-        isOpen={!!performedModalMachine}
-        onClose={() => setPerformedModalMachine(null)}
-        machine={performedModalMachine}
-        records={records}
-        templates={templates}
-        onEditTask={() => {
-          setPerformedModalMachine(null);
-          onNavigate('operator');
-        }}
-      />
     </div>
   );
 };
