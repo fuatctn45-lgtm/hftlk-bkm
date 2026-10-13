@@ -17,7 +17,6 @@ import { OperatorView } from './views/OperatorView';
 import { RedListView } from './views/RedListView';
 import { ReportsView } from './views/ReportsView';
 import { AdminView } from './views/AdminView';
-import { AiAssistantView } from './views/AiAssistantView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { Loader2, LogOut, AlertCircle, X } from 'lucide-react';
 
@@ -63,7 +62,7 @@ function filterMachinesWithTasks(rawMachines: Machine[], rawTemplates: Maintenan
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(getStoredUser);
   const [currentScreen, setCurrentScreen] = useState<
-    'home' | 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch'
+    'home' | 'operator' | 'redList' | 'reports' | 'admin'
   >('operator');
 
   // Instant SWR state: Initialize immediately from local cache so app opens in 0ms
@@ -260,13 +259,6 @@ export default function App() {
             machines={allMachines.length > 0 ? allMachines : machines}
             templates={templates}
             onTemplatesUpdated={() => loadData(true)}
-            onNavigateHome={() => setCurrentScreen('home')}
-          />
-        )}
-
-        {currentScreen === 'aiSearch' && (
-          <AiAssistantView
-            machines={machines}
             onNavigateHome={() => setCurrentScreen('home')}
           />
         )}

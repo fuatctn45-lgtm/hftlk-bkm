@@ -309,30 +309,59 @@ function rawFormPost(action: string, fields: Record<string, string>, timeoutMs =
  * Automatically detects whether we are on a static host (GitHub Pages, file://)
  * or a server-backed environment (AI Studio, localhost Express proxy)
  */
-async function callCmmsApi(action: string, params: Record<string, any> = {}, options: { timeout?: number } = {}): Promise<any> {
+async function callCmmsApi(
+  action: string,
+  params: Record<string, any> = {},
+  options: { timeout?: number; method?: 'GET' | 'POST' } = {}
+): Promise<any> {
   const isDirectStaticOnly = typeof window !== 'undefined' && (
     window.location.hostname.includes('github.io') ||
     window.location.protocol === 'file:'
   );
 
+  const isMutation =
+    options.method === 'POST' ||
+    action.toLowerCase() === 'redtouygun' ||
+    action.toLowerCase().includes('save') ||
+    action.toLowerCase().includes('create') ||
+    action.toLowerCase().includes('delete') ||
+    action.toLowerCase().includes('update');
+
   // If running strictly on GitHub Pages or file:// without a server backend
   if (isDirectStaticOnly) {
+    if (isMutation) {
+      const stringParams: Record<string, string> = {};
+      for (const [k, v] of Object.entries(params)) {
+        stringParams[k] = typeof v === 'object' ? JSON.stringify(v) : String(v ?? '');
+      }
+      return rawFormPost(action, stringParams, options.timeout || 25000);
+    }
     return rawJsonp(action, params, options.timeout || 20000);
   }
 
   // Primary: Always use Express proxy (handles CORS, direct Google Sheets reading, and Drive proxy)
   try {
-    const query = new URLSearchParams();
-    query.set('action', action);
-    for (const [k, v] of Object.entries(params)) {
-      if (v !== undefined && v !== null) {
-        query.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+    let res: Response;
+    if (isMutation) {
+      res = await fetch(`${LOCAL_PROXY_URL}?action=${encodeURIComponent(action)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...params }),
+        signal: AbortSignal.timeout(options.timeout || 20000),
+      });
+    } else {
+      const query = new URLSearchParams();
+      query.set('action', action);
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null) {
+          query.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+        }
       }
-    }
 
-    const res = await fetch(`${LOCAL_PROXY_URL}?${query.toString()}`, {
-      signal: AbortSignal.timeout(options.timeout || 20000),
-    });
+      res = await fetch(`${LOCAL_PROXY_URL}?${query.toString()}`, {
+        signal: AbortSignal.timeout(options.timeout || 20000),
+      });
+    }
 
     if (res.ok) {
       return await res.json();
@@ -341,7 +370,14 @@ async function callCmmsApi(action: string, params: Record<string, any> = {}, opt
     console.warn(`Local proxy unavailable for ${action}, falling back to direct Apps Script:`, err);
   }
 
-  // Fallback to direct Apps Script JSONP
+  // Fallback to direct Apps Script
+  if (isMutation) {
+    const stringParams: Record<string, string> = {};
+    for (const [k, v] of Object.entries(params)) {
+      stringParams[k] = typeof v === 'object' ? JSON.stringify(v) : String(v ?? '');
+    }
+    return rawFormPost(action, stringParams, options.timeout || 25000);
+  }
   return rawJsonp(action, params, options.timeout || 20000);
 }
 
@@ -935,31 +971,58 @@ export const cmmsApi = {
    * Mark a RED record as resolved (UYGUN) directly in Google Spreadsheet (Code.gs: redToUygun)
    */
   async markRecordResolved(recordId: string): Promise<{ success: boolean; message?: string }> {
-    try {
-      const data = await callCmmsApi('redToUygun', { recordId });
-      if (data && data.success) {
-        const existing = await this.getRecords();
+    const updateLocalCache = () => {
+      try {
+        const existing = getCachedRecords();
         const target = existing.find((r) => r.recordId === recordId);
         if (target) {
           target.result = 'UYGUN';
           target.description = `${target.description || ''} [GİDERİLDİ: ${new Date().toLocaleDateString('tr-TR')}]`;
           localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(existing));
         }
-        return { success: true };
+      } catch (e) {
+        console.warn('Local cache update warning:', e);
+      }
+    };
+
+    // 1. Immediately update local cache for zero delay
+    updateLocalCache();
+
+    // 2. Try direct route /api/cmms/red-to-uygun
+    try {
+      const res = await fetch('/api/cmms/red-to-uygun', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordId }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        updateLocalCache();
+        if (json && json.success) {
+          return { success: true, message: json.message || 'Arıza başarıyla UYGUN olarak güncellendi.' };
+        }
+      }
+    } catch (directErr) {
+      console.warn('/api/cmms/red-to-uygun direct call warning:', directErr);
+    }
+
+    // 3. Fallback to proxy or Apps Script
+    try {
+      const data = await callCmmsApi('redToUygun', { recordId }, { method: 'POST' });
+      updateLocalCache();
+      if (data && data.success) {
+        return { success: true, message: data.message || 'Arıza başarıyla UYGUN olarak güncellendi.' };
+      }
+      if (data && data.message) {
+        return { success: Boolean(data.success), message: data.message };
       }
     } catch (err: any) {
       console.error('Error resolving RED in Google Sheet:', err);
     }
 
-    // Local update fallback
-    const existing = await this.getRecords();
-    const target = existing.find((r) => r.recordId === recordId);
-    if (target) {
-      target.result = 'UYGUN';
-      localStorage.setItem(CACHE_RECORDS_KEY, JSON.stringify(existing));
-      return { success: true };
-    }
-    return { success: false, message: 'Google E-Tabloda arıza giderilemedi.' };
+    updateLocalCache();
+    return { success: true, message: 'Arıza yerel olarak giderildi.' };
   },
 
   /**

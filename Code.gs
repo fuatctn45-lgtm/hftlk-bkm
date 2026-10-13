@@ -74,6 +74,10 @@ function doGet(e) {
     return sendReportMail(e);
   }
 
+  if (action === 'redtouygun') {
+    return redToUygun(e);
+  }
+
   return jsonResponse({ success: false, message: 'Geçersiz işlem: ' + action });
 }
 

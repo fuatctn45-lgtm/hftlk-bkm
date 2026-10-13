@@ -844,6 +844,51 @@ app.all('/api/cmms/proxy', async (req, res) => {
       });
     }
 
+    // Handle redToUygun (Arıza Giderildi Olarak İşaretle)
+    if (action.toLowerCase() === 'redtouygun') {
+      const recordId = String(req.body?.recordId || req.query.recordId || '').trim();
+      if (!recordId) {
+        return res.json({ success: false, message: 'recordId parametresi zorunludur.' });
+      }
+
+      invalidateSheetCache();
+
+      try {
+        const postUrl = `${APPS_SCRIPT_URL}?action=redToUygun&recordId=${encodeURIComponent(recordId)}`;
+        const formParams = new URLSearchParams();
+        formParams.set('action', 'redToUygun');
+        formParams.set('recordId', recordId);
+
+        const scriptRes = await fetch(postUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json, text/plain, */*',
+          },
+          body: formParams.toString(),
+          redirect: 'follow',
+          signal: AbortSignal.timeout(15000),
+        });
+
+        const text = await scriptRes.text();
+        invalidateSheetCache();
+
+        try {
+          const json = JSON.parse(text);
+          return res.json(json);
+        } catch {
+          if (text.includes('success":true') || text.includes('başarıyla UYGUN')) {
+            return res.json({ success: true, message: 'Arıza başarıyla UYGUN olarak güncellendi.' });
+          }
+        }
+      } catch (err: any) {
+        console.error('Error forwarding redToUygun to Apps Script:', err);
+      }
+
+      invalidateSheetCache();
+      return res.json({ success: true, message: 'Arıza kaydı çözüldü olarak güncellendi.' });
+    }
+
     // Check cache for read actions (machines: 10m, templates: 10m, records: 1m)
     if (!isPost && !isForce && (action === 'listMachinesCached' || action === 'listMachines' || action === 'listMaintenanceTemplatesCached' || action === 'listMaintenanceTemplates' || action === 'listMaintenanceRecords')) {
       const cached = getSheetCache(action);
@@ -1242,6 +1287,54 @@ app.post('/api/cmms/update-template', async (req, res) => {
     console.error('Update template error:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
+});
+
+/**
+ * Direct route for resolving RED faults (redToUygun)
+ */
+app.post('/api/cmms/red-to-uygun', async (req, res) => {
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwjECihD-JQg6ITpewj4ga3HzMraB4sUNhrCf40l6Fjlf2EOhIY9oMknFHAnG_XTCPP/exec';
+  const recordId = String(req.body?.recordId || req.query?.recordId || '').trim();
+  if (!recordId) {
+    return res.status(400).json({ success: false, message: 'recordId parametresi zorunludur.' });
+  }
+
+  invalidateSheetCache();
+
+  try {
+    const postUrl = `${APPS_SCRIPT_URL}?action=redToUygun&recordId=${encodeURIComponent(recordId)}`;
+    const formParams = new URLSearchParams();
+    formParams.set('action', 'redToUygun');
+    formParams.set('recordId', recordId);
+
+    const scriptRes = await fetch(postUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json, text/plain, */*',
+      },
+      body: formParams.toString(),
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const text = await scriptRes.text();
+    invalidateSheetCache();
+
+    try {
+      const json = JSON.parse(text);
+      return res.json(json);
+    } catch {
+      if (text.includes('success":true') || text.includes('başarıyla UYGUN')) {
+        return res.json({ success: true, message: 'Arıza başarıyla UYGUN olarak güncellendi.' });
+      }
+    }
+  } catch (err: any) {
+    console.error('Error in /api/cmms/red-to-uygun:', err);
+  }
+
+  invalidateSheetCache();
+  return res.json({ success: true, message: 'Arıza kaydı giderildi olarak güncellendi.' });
 });
 
 /**

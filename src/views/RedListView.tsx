@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MaintenanceRecord, Machine } from '../types/cmms';
 import { getWeekKey, getLastWeekKey, cmmsApi } from '../services/cmmsApi';
-import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import {
   AlertTriangle,
   Search,
@@ -328,13 +327,18 @@ export const RedListView: React.FC<RedListViewProps> = ({
     fileId?: string;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [resolvedIds, setResolvedIds] = useState<string[]>([]);
+  const [toastNotification, setToastNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   const thisWeek = getWeekKey();
   const lastWeek = getLastWeekKey();
 
-  // Filter RED records
+  // Filter RED records (excluding records resolved in this session)
   const redRecords = records
-    .filter((r) => r.result === 'RED')
+    .filter((r) => r.result === 'RED' && !resolvedIds.includes(r.recordId))
     .filter((r) => {
       if (periodFilter === 'bu' && r.weekKey !== thisWeek) return false;
       if (periodFilter === 'gecen' && r.weekKey !== lastWeek) return false;
@@ -360,14 +364,37 @@ export const RedListView: React.FC<RedListViewProps> = ({
 
   const handleConfirmResolve = async () => {
     if (!pendingResolveRecord) return;
-    const recId = pendingResolveRecord.recordId;
+    const targetRecord = pendingResolveRecord;
+    const recId = targetRecord.recordId;
     setPendingResolveRecord(null);
     setActionLoading(recId);
+
+    // Optimistic UI update: immediately remove from RED view
+    setResolvedIds((prev) => [...prev, recId]);
+    setToastNotification({
+      type: 'success',
+      message: `"${targetRecord.machineName}" arızası giderildi olarak işaretlendi ve durum UYGUN yapıldı.`,
+    });
+
     try {
-      await cmmsApi.markRecordResolved(recId);
-      onRecordUpdated();
+      const res = await cmmsApi.markRecordResolved(recId);
+      if (res && res.success) {
+        onRecordUpdated();
+      } else {
+        // Rollback optimistic update on failure
+        setResolvedIds((prev) => prev.filter((id) => id !== recId));
+        setToastNotification({
+          type: 'error',
+          message: res?.message || 'Arıza durumu güncellenemedi. Lütfen tekrar deneyiniz.',
+        });
+      }
     } catch (err: any) {
       console.error('Update failed:', err);
+      setResolvedIds((prev) => prev.filter((id) => id !== recId));
+      setToastNotification({
+        type: 'error',
+        message: 'Bağlantı hatası: Arıza durumu güncellenemedi.',
+      });
     } finally {
       setActionLoading(null);
     }
@@ -375,6 +402,33 @@ export const RedListView: React.FC<RedListViewProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4">
+      {/* Toast Notification Banner */}
+      {toastNotification && (
+        <div
+          className={`p-3.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-between shadow-lg transition-all animate-in fade-in slide-in-from-top-2 ${
+            toastNotification.type === 'success'
+              ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-600/60'
+              : 'bg-rose-950/80 text-rose-200 border border-rose-600/60'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {toastNotification.type === 'success' ? (
+              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{toastNotification.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastNotification(null)}
+            className="p-1 hover:bg-black/30 rounded-lg text-slate-300 hover:text-white cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header (Sarı-Siyah) */}
       <div className="bg-[#1b263b] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -390,15 +444,6 @@ export const RedListView: React.FC<RedListViewProps> = ({
             Operatörlerin uygun bulmadığı kritik arıza kayıtları, fotoğraflı kanıtlar ve aksiyon yönetimi.
           </p>
         </div>
-
-        {redRecords.length > 0 && (
-          <AudioPlayerButton
-            text={`Açık arıza listesi: Şu anda seçili dönemde toplam ${redRecords.length} adet RED arıza kaydı bulunmaktadır. Etkilenen makine sayısı ${affectedMachines}.`}
-            label="Seslendir"
-            size="sm"
-            className="bg-[#141d2d] text-yellow-400 border-yellow-500/30"
-          />
-        )}
       </div>
 
       {/* Filters Card */}
@@ -564,12 +609,6 @@ export const RedListView: React.FC<RedListViewProps> = ({
                       <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
                       <span>Operatör Arıza Açıklaması:</span>
                     </span>
-                    <AudioPlayerButton
-                      text={`Makine: ${r.machineName}. Arıza açıklaması: ${r.description}`}
-                      label="Dinle"
-                      size="sm"
-                      className="bg-rose-950 text-rose-300 border-rose-700"
-                    />
                   </div>
                   <div className="font-semibold leading-relaxed whitespace-pre-wrap text-slate-200">
                     {r.description || 'Açıklama girilmemiş.'}
@@ -633,16 +672,25 @@ export const RedListView: React.FC<RedListViewProps> = ({
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
+                disabled={Boolean(actionLoading)}
                 onClick={handleConfirmResolve}
-                className="flex-1 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-sm shadow-md transition-colors cursor-pointer"
+                className="flex-1 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-sm shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Evet, Giderildi
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 text-black animate-spin" />
+                    <span>Kaydediliyor...</span>
+                  </>
+                ) : (
+                  <span>Evet, Giderildi</span>
+                )}
               </button>
 
               <button
                 type="button"
+                disabled={Boolean(actionLoading)}
                 onClick={() => setPendingResolveRecord(null)}
-                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-sm transition-colors cursor-pointer disabled:opacity-50"
               >
                 Vazgeç
               </button>

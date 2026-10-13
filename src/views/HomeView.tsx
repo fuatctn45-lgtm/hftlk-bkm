@@ -21,7 +21,7 @@ interface HomeViewProps {
   machines: Machine[];
   templates: MaintenanceTemplate[];
   records: MaintenanceRecord[];
-  onNavigate: (screen: 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch') => void;
+  onNavigate: (screen: 'operator' | 'redList' | 'reports' | 'admin') => void;
   onSelectMachine?: (machine: Machine, templateId?: string) => void;
 }
 

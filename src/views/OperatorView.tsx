@@ -10,7 +10,6 @@ import {
 } from '../types/cmms';
 import { getWeekKey, normalizeWeekKey, cmmsApi } from '../services/cmmsApi';
 import { uploadQueueService, QueuedRecord } from '../services/uploadQueue';
-import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { analyzeMaintenancePhoto } from '../services/geminiService';
 import { extractDriveFileId } from './RedListView';
 import {
@@ -1615,9 +1614,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
   const isPhotoRequired = isTaskPhotoMandatory(selectedTask);
   const saveDisabled = saveLoading || (isPhotoRequired && !proofImage);
 
-  // Audio briefing text for TTS
-  const taskSpeechText = `${selectedMachine?.machineName}, ${currentTaskNumber}. bakım kontrolü. Toplam ${totalTasksCount} kontrolden ${currentTaskNumber}'incisi, ${remainingCount} kontrol kaldı. ${faultOrder >= 0 ? `Bu kontrol ${faultOrder + 1}. arızadır.` : ''} Görev: ${selectedTask?.task}. İlgili birim: ${dept?.ad || selectedTask?.system || 'Belirtilmemiş'}. Bölge: ${selectedTask?.region || 'Genel'}. İstenen hedef değer: ${selectedTask?.targetValue || 'Görsel uygunluk'}. ${isPhotoRequired ? 'Uyarı: Yönetici bu bakım için kanıt fotoğrafı istemektedir.' : ''}`;
-
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-6 py-3 sm:py-5 space-y-3.5">
       {renderBreadcrumbBar()}
@@ -1638,13 +1634,6 @@ export const OperatorView: React.FC<OperatorViewProps> = ({
               </span>
             </div>
           </div>
-
-          <AudioPlayerButton
-            text={taskSpeechText}
-            label="Sesli Dinle"
-            size="sm"
-            style="Calm, authoritative industrial safety supervisor speaking Turkish."
-          />
         </div>
 
         {/* Reference Image Frame */}

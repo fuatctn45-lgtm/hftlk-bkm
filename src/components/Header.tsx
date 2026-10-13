@@ -11,7 +11,6 @@ import {
   Wrench,
   BarChart3,
   AlertTriangle,
-  Sparkles,
   Settings,
   LogOut,
   RefreshCw,
@@ -27,8 +26,8 @@ import {
 } from 'lucide-react';
 
 interface HeaderProps {
-  currentScreen: 'home' | 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch';
-  onNavigate: (screen: 'home' | 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch') => void;
+  currentScreen: 'home' | 'operator' | 'redList' | 'reports' | 'admin';
+  onNavigate: (screen: 'home' | 'operator' | 'redList' | 'reports' | 'admin') => void;
   user: UserSession | null;
   redCount: number;
   onRequestLogout: () => void;
@@ -95,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [dropdownOpen]);
 
-  const handleSelectNav = (screen: 'home' | 'operator' | 'redList' | 'reports' | 'admin' | 'aiSearch') => {
+  const handleSelectNav = (screen: 'home' | 'operator' | 'redList' | 'reports' | 'admin') => {
     onNavigate(screen);
     setDropdownOpen(false);
   };
@@ -149,13 +148,6 @@ export const Header: React.FC<HeaderProps> = ({
       desc: 'Haftalık istatistikler, Excel ve PDF raporlama',
       icon: BarChart3,
       color: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-    },
-    {
-      id: 'aiSearch' as const,
-      label: 'AI Teknik Danışman',
-      desc: 'Google Search destekli canlı teknik asistan',
-      icon: Sparkles,
-      color: 'text-yellow-300 bg-yellow-300/10 border-yellow-300/30',
     },
     ...(isAdmin
       ? [
